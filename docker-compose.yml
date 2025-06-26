@@ -1,0 +1,240 @@
+version: '3.8'
+
+services:
+  # Development service
+  musicgen-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - musicgen-models:/app/models
+      - musicgen-data:/app/data
+      - musicgen-logs:/app/logs
+    environment:
+      - MODEL_PATH=/app/models/musicgen-base
+      - MAX_DURATION=60.0
+      - DEFAULT_DURATION=10.0
+      - TEMP_DIR=/tmp/musicgen
+      - WANDB_MODE=disabled  # Disable wandb in development
+    profiles:
+      - dev
+    restart: unless-stopped
+
+  # Production service (CPU)
+  musicgen-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - "8000:8000"
+    volumes:
+      - musicgen-models:/app/models:ro
+      - musicgen-data:/app/data:ro
+      - musicgen-logs:/app/logs
+      - musicgen-temp:/tmp/musicgen
+    environment:
+      - MODEL_PATH=/app/models/musicgen-base
+      - MAX_DURATION=60.0
+      - DEFAULT_DURATION=10.0
+      - TEMP_DIR=/tmp/musicgen
+      - WORKERS=4
+    profiles:
+      - prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Production service (GPU)
+  musicgen-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu-production
+    ports:
+      - "8000:8000"
+    volumes:
+      - musicgen-models:/app/models:ro
+      - musicgen-data:/app/data:ro
+      - musicgen-logs:/app/logs
+      - musicgen-temp:/tmp/musicgen
+    environment:
+      - MODEL_PATH=/app/models/musicgen-base
+      - MAX_DURATION=120.0
+      - DEFAULT_DURATION=30.0
+      - TEMP_DIR=/tmp/musicgen
+      - WORKERS=2
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - gpu
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+
+  # Training service
+  musicgen-training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - .:/app
+      - musicgen-models:/app/models
+      - musicgen-data:/app/data
+      - musicgen-logs:/app/logs
+      - musicgen-checkpoints:/app/checkpoints
+    environment:
+      - WANDB_PROJECT=musicgen
+      - WANDB_ENTITY=your-entity
+      - CUDA_VISIBLE_DEVICES=0,1,2,3  # Multi-GPU training
+    command: >
+      bash -c "
+        music-gen-train 
+        --config configs/training/default.yaml 
+        trainer.devices=4 
+        trainer.accelerator=gpu
+      "
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    profiles:
+      - training
+    restart: "no"
+
+  # Jupyter notebook service for development
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - musicgen-models:/app/models
+      - musicgen-data:/app/data
+      - musicgen-notebooks:/app/notebooks
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: >
+      bash -c "
+        jupyter lab 
+        --ip=0.0.0.0 
+        --port=8888 
+        --no-browser 
+        --allow-root 
+        --NotebookApp.token='' 
+        --NotebookApp.password=''
+      "
+    profiles:
+      - jupyter
+    restart: unless-stopped
+
+  # Redis for task queue (production)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    profiles:
+      - prod
+      - gpu
+    restart: unless-stopped
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # Nginx reverse proxy (production)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - musicgen-prod
+    profiles:
+      - prod
+    restart: unless-stopped
+
+volumes:
+  musicgen-models:
+    driver: local
+  musicgen-data:
+    driver: local
+  musicgen-logs:
+    driver: local
+  musicgen-temp:
+    driver: local
+  musicgen-checkpoints:
+    driver: local
+  musicgen-notebooks:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    name: musicgen-network
