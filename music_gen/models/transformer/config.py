@@ -1,7 +1,7 @@
 """
 Configuration classes for the MusicGen transformer model.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from omegaconf import MISSING
 
@@ -153,10 +153,10 @@ class MusicGenConfig:
     """Complete configuration for MusicGen model."""
     
     # Sub-configurations
-    transformer: TransformerConfig = TransformerConfig()
-    encodec: EnCodecConfig = EnCodecConfig()
-    t5: T5Config = T5Config()
-    conditioning: ConditioningConfig = ConditioningConfig()
+    transformer: TransformerConfig = field(default_factory=TransformerConfig)
+    encodec: EnCodecConfig = field(default_factory=EnCodecConfig)
+    t5: T5Config = field(default_factory=T5Config)
+    conditioning: ConditioningConfig = field(default_factory=ConditioningConfig)
     
     # Model metadata
     model_name: str = "musicgen-base"
@@ -181,6 +181,16 @@ class MusicGenConfig:
                 "num_beams": 1,
                 "repetition_penalty": 1.1,
             }
+        
+        # Convert dictionaries to config objects if needed
+        if isinstance(self.transformer, dict):
+            self.transformer = TransformerConfig(**self.transformer)
+        if isinstance(self.encodec, dict):
+            self.encodec = EnCodecConfig(**self.encodec)
+        if isinstance(self.t5, dict):
+            self.t5 = T5Config(**self.t5)
+        if isinstance(self.conditioning, dict):
+            self.conditioning = ConditioningConfig(**self.conditioning)
         
         # Ensure consistency between configs
         self.transformer.text_hidden_size = self.t5.hidden_size
