@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicGen AI - Multi-Track Studio</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .track-lane {
+            background: linear-gradient(to right, #1f2937 0%, #1f2937 calc(100% - 300px), #374151 calc(100% - 300px), #374151 100%);
+        }
+        .waveform-container {
+            position: relative;
+            height: 60px;
+            background: #111827;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .instrument-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .timeline {
+            background: repeating-linear-gradient(
+                90deg,
+                #374151,
+                #374151 1px,
+                transparent 1px,
+                transparent 60px
+            );
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="bg-gray-800 shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-music text-purple-500 text-2xl"></i>
+                    <h1 class="text-xl font-bold">MusicGen AI Studio</h1>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="/index.html" class="hover:text-purple-400 transition">Simple Mode</a>
+                    <a href="#" class="text-purple-400">Multi-Track Studio</a>
+                    <a href="#export" class="hover:text-purple-400 transition">Export</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex h-screen">
+        <!-- Left Panel - Track Controls -->
+        <div class="w-80 bg-gray-800 p-4 overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4">Project Settings</h2>
+            
+            <!-- Master Prompt -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Master Prompt</label>
+                <textarea 
+                    id="masterPrompt"
+                    class="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm"
+                    rows="3"
+                    placeholder="Describe the overall style and mood..."
+                ></textarea>
+            </div>
+
+            <!-- Project Settings -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Duration (seconds)</label>
+                <input type="number" id="duration" value="30" min="1" max="120" 
+                    class="w-full px-3 py-2 bg-gray-700 rounded-lg">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Tempo (BPM)</label>
+                <input type="number" id="tempo" value="120" min="60" max="200" 
+                    class="w-full px-3 py-2 bg-gray-700 rounded-lg">
+            </div>
+
+            <!-- Add Track Button -->
+            <button id="addTrackBtn" class="w-full py-2 bg-purple-600 hover:bg-purple-700 rounded-lg mb-4">
+                <i class="fas fa-plus mr-2"></i>Add Track
+            </button>
+
+            <!-- Instrument Selection -->
+            <div id="instrumentPanel" class="hidden">
+                <h3 class="text-lg font-semibold mb-3">Select Instrument</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="piano">
+                        <i class="fas fa-piano-keyboard"></i>
+                        <span class="block text-xs mt-1">Piano</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="guitar">
+                        <i class="fas fa-guitar"></i>
+                        <span class="block text-xs mt-1">Guitar</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="drums">
+                        <i class="fas fa-drum"></i>
+                        <span class="block text-xs mt-1">Drums</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="bass">
+                        <i class="fas fa-guitar"></i>
+                        <span class="block text-xs mt-1">Bass</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="violin">
+                        <i class="fas fa-violin"></i>
+                        <span class="block text-xs mt-1">Violin</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="saxophone">
+                        <i class="fas fa-saxophone"></i>
+                        <span class="block text-xs mt-1">Saxophone</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="synthesizer">
+                        <i class="fas fa-keyboard"></i>
+                        <span class="block text-xs mt-1">Synth</span>
+                    </button>
+                    <button class="instrument-btn p-3 bg-gray-700 hover:bg-purple-600 rounded" data-instrument="flute">
+                        <i class="fas fa-wind"></i>
+                        <span class="block text-xs mt-1">Flute</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Area - Track View -->
+        <div class="flex-1 bg-gray-900 relative">
+            <!-- Timeline Header -->
+            <div class="h-12 bg-gray-800 border-b border-gray-700 timeline flex items-center px-4">
+                <div class="w-64"><!-- Space for track headers --></div>
+                <div class="flex-1 relative">
+                    <div class="flex text-xs text-gray-400">
+                        <span class="absolute left-0">0:00</span>
+                        <span class="absolute left-1/4">0:15</span>
+                        <span class="absolute left-1/2">0:30</span>
+                        <span class="absolute left-3/4">0:45</span>
+                        <span class="absolute right-0">1:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tracks Container -->
+            <div id="tracksContainer" class="overflow-y-auto" style="height: calc(100% - 200px);">
+                <!-- Tracks will be added here dynamically -->
+            </div>
+
+            <!-- Transport Controls -->
+            <div class="absolute bottom-0 left-0 right-0 h-32 bg-gray-800 border-t border-gray-700 p-4">
+                <div class="flex items-center justify-center space-x-4 mb-4">
+                    <button id="playBtn" class="p-3 bg-purple-600 hover:bg-purple-700 rounded-full">
+                        <i class="fas fa-play text-xl"></i>
+                    </button>
+                    <button id="stopBtn" class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full">
+                        <i class="fas fa-stop text-xl"></i>
+                    </button>
+                    <button id="generateAllBtn" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg">
+                        <i class="fas fa-magic mr-2"></i>Generate All Tracks
+                    </button>
+                </div>
+                
+                <!-- Master Volume -->
+                <div class="flex items-center justify-center space-x-4">
+                    <label class="text-sm">Master Volume</label>
+                    <input type="range" id="masterVolume" min="0" max="100" value="80" 
+                        class="w-64">
+                    <span id="masterVolumeDisplay" class="text-sm w-12">80%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Track Details -->
+        <div id="trackDetailsPanel" class="w-80 bg-gray-800 p-4 hidden">
+            <h3 class="text-lg font-semibold mb-4">Track Settings</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Track Name</label>
+                <input type="text" id="trackName" class="w-full px-3 py-2 bg-gray-700 rounded-lg">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Volume</label>
+                <input type="range" id="trackVolume" min="0" max="100" value="70" class="w-full">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Pan</label>
+                <input type="range" id="trackPan" min="-100" max="100" value="0" class="w-full">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Effects</label>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">Reverb</span>
+                        <input type="range" id="trackReverb" min="0" max="100" value="20" class="w-32">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">Delay</span>
+                        <input type="range" id="trackDelay" min="0" max="100" value="0" class="w-32">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Start Time (s)</label>
+                <input type="number" id="trackStartTime" min="0" value="0" step="0.1" 
+                    class="w-full px-3 py-2 bg-gray-700 rounded-lg">
+            </div>
+
+            <button id="deleteTrackBtn" class="w-full py-2 bg-red-600 hover:bg-red-700 rounded-lg">
+                <i class="fas fa-trash mr-2"></i>Delete Track
+            </button>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 p-6 rounded-lg max-w-md w-full">
+            <h3 class="text-xl font-bold mb-4">Export Options</h3>
+            
+            <div class="space-y-3">
+                <label class="flex items-center">
+                    <input type="checkbox" id="exportMixed" checked class="mr-3">
+                    <span>Mixed Audio (WAV)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="exportStems" class="mr-3">
+                    <span>Individual Stems</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" id="exportMidi" class="mr-3">
+                    <span>MIDI Files</span>
+                </label>
+            </div>
+
+            <div class="flex space-x-3 mt-6">
+                <button id="confirmExport" class="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg">
+                    Export
+                </button>
+                <button id="cancelExport" class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/multi_track.js"></script>
+</body>
+</html>

@@ -18,10 +18,12 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 from ..models.musicgen import MusicGenModel, create_musicgen_model
+from ..models.multi_instrument import MultiInstrumentMusicGen
 from ..utils.audio import save_audio_file, load_audio_file
 from ..evaluation.metrics import AudioQualityMetrics
 from ..streaming import SessionManager
 from .streaming_api import setup_streaming_routes
+from .multi_instrument_api import setup_multi_instrument_routes
 from ..web.app import setup_web_routes
 
 # Configure logging
@@ -147,6 +149,11 @@ async def startup_event():
         
         # Setup streaming routes
         setup_streaming_routes(app, model, session_manager)
+        
+        # Setup multi-instrument routes if model supports it
+        if hasattr(model, 'multi_config') or isinstance(model, MultiInstrumentMusicGen):
+            setup_multi_instrument_routes(app, model, TEMP_DIR)
+            logger.info("Multi-instrument API routes enabled")
         
         # Setup web UI routes
         setup_web_routes(app)

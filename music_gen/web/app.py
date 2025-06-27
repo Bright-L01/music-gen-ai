@@ -97,11 +97,33 @@ def setup_web_routes(main_app):
                         <a href="/docs">API Documentation</a>
                         <a href="/redoc">ReDoc</a>
                         <a href="/stream/demo">Streaming Demo</a>
+                        <a href="/studio">Multi-Track Studio</a>
                     </div>
                 </body>
                 </html>
                 """
             )
+    
+    # Add multi-track studio route
+    @main_app.get("/studio", response_class=HTMLResponse, include_in_schema=False)
+    async def serve_multi_track_studio():
+        """Serve the multi-track studio UI."""
+        studio_path = STATIC_DIR / "multi_track.html"
+        if studio_path.exists():
+            with open(studio_path, 'r') as f:
+                content = f.read()
+            return HTMLResponse(content=content)
+        else:
+            return HTMLResponse(
+                content="<h1>Multi-Track Studio not found</h1>",
+                status_code=404
+            )
+    
+    # Add convenience route
+    @main_app.get("/index.html", response_class=HTMLResponse, include_in_schema=False)
+    async def serve_index():
+        """Serve index.html directly."""
+        return await serve_web_ui()
     
     logger.info("Web UI routes configured")
 
