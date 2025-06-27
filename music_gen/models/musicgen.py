@@ -11,6 +11,7 @@ from .transformer.model import MusicGenTransformer
 from .transformer.config import MusicGenConfig, TransformerConfig
 from .encoders import MultiModalEncoder
 from .encodec.audio_tokenizer import EnCodecTokenizer
+from ..generation.beam_search import BeamSearchConfig, beam_search_generate
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +300,24 @@ class MusicGenModel(nn.Module):
             device=device
         )
         
-        # Generation loop
+        # Use beam search if num_beams > 1
+        if num_beams > 1:
+            return self._beam_search_generate(
+                input_ids=input_ids,
+                encoder_hidden_states=encoder_hidden_states,
+                encoder_attention_mask=encoder_attention_mask,
+                conditioning_embeddings=conditioning_embeddings,
+                max_length=max_length,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                repetition_penalty=repetition_penalty,
+                num_beams=num_beams,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
+            )
+        
+        # Generation loop for greedy/sampling
         past_key_values = None
         finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
         
@@ -395,6 +413,185 @@ class MusicGenModel(nn.Module):
         
         # Generate tokens
         tokens = self.generate(texts, **generation_kwargs)
+        
+        # Convert to audio
+        audio = self.decode_audio(tokens)
+        
+        return audio
+    
+    def _beam_search_generate(
+        self,
+        input_ids: torch.Tensor,
+        encoder_hidden_states: torch.Tensor,
+        encoder_attention_mask: torch.Tensor,
+        conditioning_embeddings: torch.Tensor,
+        max_length: int = 1024,
+        temperature: float = 1.0,
+        top_k: int = 50,
+        top_p: float = 0.9,
+        repetition_penalty: float = 1.1,
+        num_beams: int = 4,
+        pad_token_id: int = 0,
+        eos_token_id: int = 2,
+        length_penalty: float = 1.0,
+        diversity_penalty: float = 0.0,
+        early_stopping: bool = True,
+        **kwargs
+    ) -> torch.Tensor:
+        """Generate using beam search."""
+        
+        # Create beam search configuration
+        beam_config = BeamSearchConfig(
+            num_beams=num_beams,
+            max_length=max_length,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            length_penalty=length_penalty,
+            diversity_penalty=diversity_penalty,
+            early_stopping=early_stopping,
+            pad_token_id=pad_token_id,
+            eos_token_id=eos_token_id,
+            bos_token_id=self.bos_token_id,
+        )
+        
+        # Perform beam search
+        generated_sequences, scores = beam_search_generate(
+            model=self,
+            input_ids=input_ids,
+            config=beam_config,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
+            conditioning_embeddings=conditioning_embeddings,
+        )
+        
+        return generated_sequences
+    
+    @torch.no_grad()
+    def generate_with_beam_search(
+        self,
+        texts: List[str],
+        num_beams: int = 4,
+        max_length: int = 1024,
+        temperature: float = 1.0,
+        top_k: int = 50,
+        top_p: float = 0.9,
+        repetition_penalty: float = 1.1,
+        length_penalty: float = 1.0,
+        diversity_penalty: float = 0.0,
+        early_stopping: bool = True,
+        genre_ids: Optional[torch.Tensor] = None,
+        mood_ids: Optional[torch.Tensor] = None,
+        tempo: Optional[torch.Tensor] = None,
+        duration: Optional[torch.Tensor] = None,
+        instrument_ids: Optional[torch.Tensor] = None,
+        device: Optional[torch.device] = None,
+        **kwargs
+    ) -> torch.Tensor:
+        """
+        Generate music tokens using beam search.
+        
+        Args:
+            texts: List of text prompts
+            num_beams: Number of beams for beam search
+            max_length: Maximum generation length
+            temperature: Sampling temperature
+            top_k: Top-k filtering
+            top_p: Top-p (nucleus) filtering
+            repetition_penalty: Repetition penalty factor
+            length_penalty: Length penalty factor for beam search
+            diversity_penalty: Diversity penalty for diverse beam search
+            early_stopping: Whether to stop early when EOS is found
+            genre_ids: Genre conditioning
+            mood_ids: Mood conditioning  
+            tempo: Tempo conditioning
+            duration: Duration conditioning
+            instrument_ids: Instrument conditioning
+            device: Device to run generation on
+            **kwargs: Additional arguments
+            
+        Returns:
+            Generated token sequences
+        """
+        
+        if device is None:
+            device = next(self.parameters()).device
+        
+        batch_size = len(texts)
+        
+        # Prepare encoder inputs
+        encoder_outputs = self.prepare_inputs(
+            texts=texts,
+            device=device,
+            genre_ids=genre_ids,
+            mood_ids=mood_ids,
+            tempo=tempo,
+            duration=duration,
+            instrument_ids=instrument_ids,
+        )
+        
+        encoder_hidden_states = encoder_outputs["text_hidden_states"]
+        encoder_attention_mask = encoder_outputs["text_attention_mask"]
+        conditioning_embeddings = encoder_outputs["conditioning_embeddings"]
+        
+        # Initialize generation with BOS token
+        input_ids = torch.full(
+            (batch_size, 1),
+            self.bos_token_id,
+            dtype=torch.long,
+            device=device
+        )
+        
+        # Generate using beam search
+        return self._beam_search_generate(
+            input_ids=input_ids,
+            encoder_hidden_states=encoder_hidden_states,
+            encoder_attention_mask=encoder_attention_mask,
+            conditioning_embeddings=conditioning_embeddings,
+            max_length=max_length,
+            temperature=temperature,
+            top_k=top_k,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            num_beams=num_beams,
+            length_penalty=length_penalty,
+            diversity_penalty=diversity_penalty,
+            early_stopping=early_stopping,
+            **kwargs
+        )
+    
+    @torch.no_grad()
+    def generate_audio_with_beam_search(
+        self,
+        texts: List[str],
+        duration: float = 10.0,
+        num_beams: int = 4,
+        **generation_kwargs
+    ) -> torch.Tensor:
+        """
+        Generate audio from text prompts using beam search.
+        
+        Args:
+            texts: Text prompts
+            duration: Target duration in seconds
+            num_beams: Number of beams for beam search
+            **generation_kwargs: Additional generation parameters
+            
+        Returns:
+            Generated audio tensor
+        """
+        
+        # Calculate target sequence length
+        target_length = self.audio_tokenizer.get_sequence_length(duration)
+        generation_kwargs.setdefault("max_length", target_length)
+        
+        # Generate tokens using beam search
+        tokens = self.generate_with_beam_search(
+            texts, 
+            num_beams=num_beams,
+            **generation_kwargs
+        )
         
         # Convert to audio
         audio = self.decode_audio(tokens)

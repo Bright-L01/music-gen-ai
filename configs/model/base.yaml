@@ -1,0 +1,34 @@
+# Base model configuration (default)
+
+size: base
+hidden_size: 768
+num_layers: 12
+num_heads: 12
+intermediate_size: 3072
+vocab_size: 2048
+max_sequence_length: 8192
+max_generation_length: 4096
+
+# Attention settings
+attention_dropout: 0.1
+hidden_dropout: 0.1
+layer_norm_eps: 1e-12
+use_cache: true
+use_rotary_positional_encoding: false
+use_scaled_dot_product_attention: true
+
+# Cross-attention (all layers)
+cross_attention_layers: null
+text_hidden_size: 768
+
+# Token IDs
+pad_token_id: 0
+bos_token_id: 1
+eos_token_id: 2
+
+# Memory optimization
+gradient_checkpointing: false
+
+# Conditioning
+use_conditioning: true
+conditioning_dim: 512

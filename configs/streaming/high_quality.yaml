@@ -1,0 +1,37 @@
+# High quality streaming configuration for studio applications
+
+# Chunk settings - longer for better quality
+chunk_duration: 2.0  # Longer chunks for better coherence
+overlap_duration: 0.5  # More overlap for smooth transitions
+lookahead_chunks: 4  # More lookahead for planning
+
+# Generation parameters - optimized for quality
+temperature: 0.7  # Lower temperature for more focused generation
+top_k: 30  # More selective sampling
+top_p: 0.85
+repetition_penalty: 1.2
+
+# Quality vs latency - prioritize quality
+max_latency_ms: 2000  # Allow higher latency for quality
+quality_mode: "quality"
+
+# Memory management - larger context for coherence
+max_context_length: 4096
+context_window_overlap: 512
+
+# Streaming controls
+enable_interruption: false  # Disable interruption for consistency
+adaptive_quality: false  # Fixed high quality
+
+# Buffer management - more buffering for stability
+buffer_size: 12
+min_buffer_size: 4
+
+# Audio processing - longer crossfade for seamless transitions
+crossfade_duration: 0.3
+sample_rate: 24000
+
+# Network settings
+max_concurrent_sessions: 2  # Fewer sessions due to higher resource usage
+session_timeout_minutes: 10
+heartbeat_interval_seconds: 60

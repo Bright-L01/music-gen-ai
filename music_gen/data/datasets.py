@@ -13,6 +13,12 @@ import logging
 from pathlib import Path
 import pandas as pd
 
+from .augmentation import (
+    create_training_augmentation_pipeline,
+    create_inference_augmentation_pipeline,
+    AdaptiveAugmentation
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,6 +42,8 @@ class MusicCapsDataset(Dataset):
         augment_audio: bool = True,
         augment_text: bool = False,
         cache_audio_tokens: bool = True,
+        augmentation_strength: str = "moderate",  # "light", "moderate", "strong"
+        use_adaptive_augmentation: bool = False,
     ):
         super().__init__()
         
@@ -49,6 +57,8 @@ class MusicCapsDataset(Dataset):
         self.augment_audio = augment_audio
         self.augment_text = augment_text
         self.cache_audio_tokens = cache_audio_tokens
+        self.augmentation_strength = augmentation_strength
+        self.use_adaptive_augmentation = use_adaptive_augmentation
         
         # Load metadata
         self.metadata = self._load_metadata()
@@ -56,11 +66,31 @@ class MusicCapsDataset(Dataset):
         # Audio cache for tokenized audio
         self.audio_cache = {} if cache_audio_tokens else None
         
-        # Audio augmentation transforms
-        if augment_audio:
-            self.audio_transforms = self._create_audio_transforms()
+        # Initialize audio augmentation pipeline
+        if augment_audio and split == "train":
+            if use_adaptive_augmentation:
+                self.adaptive_augmentation = AdaptiveAugmentation()
+                self.audio_pipeline = None  # Will be created dynamically
+            else:
+                strong_aug = (augmentation_strength == "strong")
+                self.audio_pipeline = create_training_augmentation_pipeline(
+                    strong=strong_aug,
+                    include_mix=True
+                )
+                self.adaptive_augmentation = None
         else:
-            self.audio_transforms = None
+            # Light augmentation for validation/inference
+            self.audio_pipeline = create_inference_augmentation_pipeline() if augment_audio else None
+            self.adaptive_augmentation = None
+        
+        # Initialize mix samples for Polymix augmentation
+        self.mix_samples = []
+        if self.audio_pipeline and hasattr(self.audio_pipeline, 'augmentations'):
+            # Find PolymixAugmentation and set up mix samples
+            for aug in self.audio_pipeline.augmentations:
+                if hasattr(aug, 'set_mix_samples'):
+                    # Load a few random samples for mixing
+                    self._setup_mix_samples(aug)
         
         logger.info(f"Loaded {len(self.metadata)} samples for {split} split")
     
@@ -87,47 +117,44 @@ class MusicCapsDataset(Dataset):
         
         return valid_metadata
     
-    def _create_audio_transforms(self):
-        """Create audio augmentation transforms."""
+    def _setup_mix_samples(self, polymix_aug, num_samples: int = 10):
+        """Set up mix samples for Polymix augmentation."""
         
-        transforms = []
+        if len(self.metadata) < num_samples:
+            return
         
-        # Time stretching (tempo change)
-        if random.random() < 0.3:
-            rate = random.uniform(0.9, 1.1)
-            transforms.append(torchaudio.transforms.TimeStretch(rate))
+        # Select random samples for mixing
+        mix_metadata = random.sample(self.metadata, num_samples)
+        mix_samples = []
         
-        # Pitch shifting
-        if random.random() < 0.3:
-            n_steps = random.uniform(-2, 2)
-            transforms.append(torchaudio.transforms.PitchShift(self.sample_rate, n_steps))
+        for meta in mix_metadata:
+            try:
+                waveform = self._load_audio(meta["audio_path"])
+                mix_samples.append(waveform)
+            except Exception as e:
+                logger.warning(f"Failed to load mix sample {meta['audio_path']}: {e}")
         
-        # Add background noise
-        if random.random() < 0.2:
-            noise_level = random.uniform(0.001, 0.01)
-            def add_noise(waveform):
-                noise = torch.randn_like(waveform) * noise_level
-                return waveform + noise
-            transforms.append(add_noise)
-        
-        return transforms
+        if mix_samples:
+            polymix_aug.set_mix_samples(mix_samples)
+            logger.info(f"Set up {len(mix_samples)} mix samples for Polymix augmentation")
     
     def _augment_audio(self, waveform: torch.Tensor) -> torch.Tensor:
-        """Apply audio augmentations."""
+        """Apply audio augmentations using the new pipeline."""
         
-        if self.audio_transforms is None:
+        if self.adaptive_augmentation is not None:
+            # Use adaptive augmentation
+            pipeline = self.adaptive_augmentation.get_pipeline()
+            return pipeline(waveform, self.sample_rate)
+        elif self.audio_pipeline is not None:
+            # Use pre-configured pipeline
+            return self.audio_pipeline(waveform, self.sample_rate)
+        else:
             return waveform
-        
-        # Apply random subset of transforms
-        for transform in self.audio_transforms:
-            if random.random() < 0.5:  # 50% chance to apply each transform
-                try:
-                    waveform = transform(waveform)
-                except Exception as e:
-                    logger.warning(f"Audio augmentation failed: {e}")
-                    break
-        
-        return waveform
+    
+    def update_augmentation_strength(self, loss: float, target_loss: float = 2.0):
+        """Update adaptive augmentation strength based on training loss."""
+        if self.adaptive_augmentation is not None:
+            self.adaptive_augmentation.update_strength(loss, target_loss)
     
     def _augment_text(self, text: str) -> str:
         """Apply text augmentations."""

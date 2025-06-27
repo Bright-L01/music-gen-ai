@@ -1,0 +1,25 @@
+# Beam search inference configuration
+
+# Generation parameters  
+max_length: 1024
+temperature: 0.8  # Lower temperature for beam search
+top_k: 40
+top_p: 0.95
+do_sample: false  # Disable sampling for beam search
+repetition_penalty: 1.2
+
+# Beam search parameters
+num_beams: 4
+length_penalty: 0.8
+diversity_penalty: 0.5
+early_stopping: true
+no_repeat_ngram_size: 3
+
+# Audio generation
+default_duration: 10.0
+max_duration: 60.0
+min_duration: 1.0
+
+# Quality settings
+use_cache: true
+compile_model: false

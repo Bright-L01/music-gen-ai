@@ -1,0 +1,62 @@
+# MusicCaps dataset configuration
+
+dataset_name: musiccaps
+data_dir: data/musiccaps/
+split: train
+
+# Data processing
+max_audio_length: 30.0
+sample_rate: 24000
+max_text_length: 512
+
+# Augmentation for real data
+augment_audio: true
+augment_text: true
+cache_audio_tokens: true
+cache_dir: .cache/musiccaps/
+augmentation_strength: strong  # Use strong augmentation for real data
+use_adaptive_augmentation: true  # Enable adaptive augmentation
+
+# DataLoader settings for real dataset
+batch_size: 16
+num_workers: 4
+pin_memory: true
+shuffle: true
+drop_last: true
+
+# Full conditioning vocabulary
+conditioning_vocab:
+  genre:
+    jazz: 0
+    classical: 1
+    rock: 2
+    electronic: 3
+    ambient: 4
+    folk: 5
+    blues: 6
+    country: 7
+    reggae: 8
+    hip-hop: 9
+    pop: 10
+    metal: 11
+    orchestral: 12
+    piano: 13
+    acoustic: 14
+    instrumental: 15
+  mood:
+    happy: 0
+    sad: 1
+    energetic: 2
+    calm: 3
+    dramatic: 4
+    peaceful: 5
+    melancholic: 6
+    uplifting: 7
+    mysterious: 8
+    romantic: 9
+    epic: 10
+    nostalgic: 11
+    playful: 12
+    intense: 13
+    serene: 14
+    triumphant: 15

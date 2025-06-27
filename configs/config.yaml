@@ -1,0 +1,74 @@
+# Default MusicGen configuration
+
+# Main configuration structure
+defaults:
+  - model: base
+  - data: synthetic
+  - training: base
+  - inference: base
+  - experiment: base
+  - checkpoint: base
+  - _self_
+
+# Model configuration
+model:
+  size: base
+  hidden_size: 768
+  num_layers: 12
+  num_heads: 12
+  use_conditioning: true
+
+# Audio processing
+audio:
+  model_name: facebook/encodec_24khz
+  sample_rate: 24000
+  num_quantizers: 8
+  bandwidth: 6.0
+
+# Text processing
+text:
+  model_name: t5-base
+  max_text_length: 512
+  freeze_encoder: true
+
+# Conditioning
+conditioning:
+  use_genre: true
+  use_mood: true
+  use_tempo: true
+  use_duration: true
+
+# Data configuration
+data:
+  dataset_name: synthetic
+  batch_size: 16
+  num_workers: 4
+  max_audio_length: 30.0
+
+# Training configuration
+training:
+  learning_rate: 5e-4
+  max_steps: 100000
+  warmup_steps: 5000
+  gradient_clip_val: 1.0
+  use_progressive_training: true
+
+# Inference configuration
+inference:
+  max_length: 1024
+  temperature: 1.0
+  top_k: 50
+  top_p: 0.9
+  default_duration: 10.0
+
+# Experiment tracking
+experiment:
+  name: musicgen_experiment
+  project: musicgen
+  log_audio_samples: true
+
+# Environment
+seed: 42
+device: auto
+output_dir: outputs/
+debug: false

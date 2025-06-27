@@ -1,0 +1,37 @@
+# Low latency streaming configuration for real-time applications
+
+# Chunk settings - smaller for lower latency
+chunk_duration: 0.5  # Shorter chunks for faster response
+overlap_duration: 0.1  # Minimal overlap
+lookahead_chunks: 1  # Minimal lookahead
+
+# Generation parameters - optimized for speed
+temperature: 1.0  # Higher temperature for faster sampling
+top_k: 50  # Slightly higher for less computation
+top_p: 0.95
+repetition_penalty: 1.1
+
+# Quality vs latency - prioritize latency
+max_latency_ms: 200  # Very low latency target
+quality_mode: "fast"
+
+# Memory management - smaller context
+max_context_length: 1024
+context_window_overlap: 128
+
+# Streaming controls
+enable_interruption: true
+adaptive_quality: true
+
+# Buffer management - minimal buffering
+buffer_size: 4
+min_buffer_size: 1
+
+# Audio processing - minimal crossfade
+crossfade_duration: 0.05
+sample_rate: 24000
+
+# Network settings
+max_concurrent_sessions: 10  # Allow more sessions with lower resource usage
+session_timeout_minutes: 3
+heartbeat_interval_seconds: 15

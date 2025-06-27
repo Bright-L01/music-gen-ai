@@ -1,0 +1,43 @@
+# Base training configuration
+
+# Optimization
+learning_rate: 5e-4
+weight_decay: 0.01
+adam_beta1: 0.9
+adam_beta2: 0.95
+adam_eps: 1e-8
+
+# Learning rate scheduling
+warmup_steps: 5000
+max_steps: 100000
+lr_scheduler: cosine
+min_lr_ratio: 0.1
+
+# Training dynamics  
+gradient_clip_val: 1.0
+accumulate_grad_batches: 1
+max_epochs: 100
+
+# Validation
+val_check_interval: 0.25
+check_val_every_n_epoch: 1
+
+# Logging
+log_every_n_steps: 100
+save_top_k: 3
+
+# Progressive training
+use_progressive_training: true
+sequence_length_schedule:
+  - [0, 256]
+  - [5000, 512] 
+  - [15000, 1024]
+  - [30000, 2048]
+  - [50000, 4096]
+
+# Mixed precision
+use_mixed_precision: true
+precision: "16-mixed"
+
+# Compilation (disable by default for compatibility)
+compile_model: false

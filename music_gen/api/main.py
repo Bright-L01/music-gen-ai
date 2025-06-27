@@ -20,6 +20,9 @@ import uvicorn
 from ..models.musicgen import MusicGenModel, create_musicgen_model
 from ..utils.audio import save_audio_file, load_audio_file
 from ..evaluation.metrics import AudioQualityMetrics
+from ..streaming import SessionManager
+from .streaming_api import setup_streaming_routes
+from ..web.app import setup_web_routes
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Global model instance
 model: Optional[MusicGenModel] = None
 audio_metrics: Optional[AudioQualityMetrics] = None
+session_manager: Optional[SessionManager] = None
 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Configuration
@@ -48,6 +52,9 @@ class GenerationRequest(BaseModel):
     top_p: float = Field(0.9, ge=0.1, le=1.0, description="Top-p (nucleus) sampling parameter")
     do_sample: bool = Field(True, description="Whether to use sampling")
     repetition_penalty: float = Field(1.1, ge=1.0, le=2.0, description="Repetition penalty")
+    num_beams: int = Field(1, ge=1, le=8, description="Number of beams for beam search (1 = greedy/sampling)")
+    length_penalty: float = Field(1.0, ge=0.0, le=2.0, description="Length penalty for beam search")
+    early_stopping: bool = Field(True, description="Whether to stop early in beam search")
     genre: Optional[str] = Field(None, description="Musical genre")
     mood: Optional[str] = Field(None, description="Musical mood")
     tempo: Optional[int] = Field(None, ge=60, le=200, description="Tempo in BPM")
@@ -114,7 +121,7 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize the model on startup."""
-    global model, audio_metrics
+    global model, audio_metrics, session_manager
     
     logger.info("Starting MusicGen API server...")
     logger.info(f"Using device: {device}")
@@ -134,7 +141,17 @@ async def startup_event():
         # Initialize metrics
         audio_metrics = AudioQualityMetrics()
         
-        logger.info("Model loaded successfully")
+        # Initialize session manager for streaming
+        max_concurrent_sessions = int(os.getenv("MAX_CONCURRENT_SESSIONS", "5"))
+        session_manager = SessionManager(model, max_concurrent_sessions)
+        
+        # Setup streaming routes
+        setup_streaming_routes(app, model, session_manager)
+        
+        # Setup web UI routes
+        setup_web_routes(app)
+        
+        logger.info("Model, streaming services, and web UI loaded successfully")
         
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
@@ -144,7 +161,13 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown."""
+    global session_manager
+    
     logger.info("Shutting down MusicGen API server...")
+    
+    # Shutdown session manager
+    if session_manager:
+        await session_manager.shutdown()
     
     # Cleanup temporary files
     for file_path in TEMP_DIR.glob("*.wav"):
@@ -372,16 +395,32 @@ async def generate_music_task(task_id: str, request: GenerationRequest):
         
         # Generate audio
         with torch.no_grad():
-            audio_tensor = model.generate_audio(
-                texts=[request.prompt],
-                duration=request.duration,
-                temperature=request.temperature,
-                top_k=request.top_k,
-                top_p=request.top_p,
-                do_sample=request.do_sample,
-                repetition_penalty=request.repetition_penalty,
-                **conditioning,
-            )
+            if request.num_beams > 1:
+                # Use beam search
+                audio_tensor = model.generate_audio_with_beam_search(
+                    texts=[request.prompt],
+                    duration=request.duration,
+                    num_beams=request.num_beams,
+                    temperature=request.temperature,
+                    top_k=request.top_k,
+                    top_p=request.top_p,
+                    repetition_penalty=request.repetition_penalty,
+                    length_penalty=request.length_penalty,
+                    early_stopping=request.early_stopping,
+                    **conditioning,
+                )
+            else:
+                # Use standard generation
+                audio_tensor = model.generate_audio(
+                    texts=[request.prompt],
+                    duration=request.duration,
+                    temperature=request.temperature,
+                    top_k=request.top_k,
+                    top_p=request.top_p,
+                    do_sample=request.do_sample,
+                    repetition_penalty=request.repetition_penalty,
+                    **conditioning,
+                )
         
         # Save audio file
         audio_path = TEMP_DIR / f"{task_id}.wav"
@@ -408,6 +447,10 @@ async def generate_music_task(task_id: str, request: GenerationRequest):
                     "top_k": request.top_k,
                     "top_p": request.top_p,
                     "repetition_penalty": request.repetition_penalty,
+                    "num_beams": request.num_beams,
+                    "length_penalty": request.length_penalty,
+                    "early_stopping": request.early_stopping,
+                    "method": "beam_search" if request.num_beams > 1 else "sampling" if request.do_sample else "greedy",
                 },
                 "conditioning": {
                     "genre": request.genre,

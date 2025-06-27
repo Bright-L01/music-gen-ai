@@ -1,0 +1,25 @@
+# Base inference configuration
+
+# Generation parameters
+max_length: 1024
+temperature: 1.0
+top_k: 50
+top_p: 0.9
+do_sample: true
+repetition_penalty: 1.1
+
+# Beam search parameters
+num_beams: 1  # Use sampling by default
+length_penalty: 1.0
+diversity_penalty: 0.0
+early_stopping: true
+no_repeat_ngram_size: 0
+
+# Audio generation
+default_duration: 10.0
+max_duration: 60.0
+min_duration: 1.0
+
+# Quality settings
+use_cache: true
+compile_model: false

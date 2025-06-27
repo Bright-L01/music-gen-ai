@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicGen AI - Text to Music Generation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <!-- Navigation -->
+    <nav class="bg-gray-800 shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-music text-purple-500 text-2xl"></i>
+                    <h1 class="text-xl font-bold">MusicGen AI</h1>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#generate" class="hover:text-purple-400 transition">Generate</a>
+                    <a href="#streaming" class="hover:text-purple-400 transition">Live Stream</a>
+                    <a href="#library" class="hover:text-purple-400 transition">Library</a>
+                    <a href="#about" class="hover:text-purple-400 transition">About</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Generation Interface -->
+        <div id="generate" class="mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-center">Create Your Music</h2>
+            
+            <div class="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-xl p-6">
+                <!-- Prompt Input -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium mb-2">Describe Your Music</label>
+                    <textarea 
+                        id="promptInput"
+                        class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                        rows="3"
+                        placeholder="Example: Upbeat jazz piano with smooth saxophone, walking bass line, and light drums..."
+                    ></textarea>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        <button class="prompt-suggestion px-3 py-1 bg-gray-700 rounded-full text-sm hover:bg-purple-600 transition">
+                            Jazz Piano Trio
+                        </button>
+                        <button class="prompt-suggestion px-3 py-1 bg-gray-700 rounded-full text-sm hover:bg-purple-600 transition">
+                            Epic Orchestral
+                        </button>
+                        <button class="prompt-suggestion px-3 py-1 bg-gray-700 rounded-full text-sm hover:bg-purple-600 transition">
+                            Chill Lofi Hip-Hop
+                        </button>
+                        <button class="prompt-suggestion px-3 py-1 bg-gray-700 rounded-full text-sm hover:bg-purple-600 transition">
+                            Electronic Dance
+                        </button>
+                        <button class="prompt-suggestion px-3 py-1 bg-gray-700 rounded-full text-sm hover:bg-purple-600 transition">
+                            Acoustic Folk
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Generation Parameters -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Musical Attributes -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Musical Attributes</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Genre</label>
+                            <select id="genreSelect" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                <option value="">Auto-detect</option>
+                                <option value="jazz">Jazz</option>
+                                <option value="classical">Classical</option>
+                                <option value="rock">Rock</option>
+                                <option value="electronic">Electronic</option>
+                                <option value="ambient">Ambient</option>
+                                <option value="folk">Folk</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Mood</label>
+                            <select id="moodSelect" class="w-full px-3 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                <option value="">Auto-detect</option>
+                                <option value="happy">Happy</option>
+                                <option value="sad">Sad</option>
+                                <option value="energetic">Energetic</option>
+                                <option value="calm">Calm</option>
+                                <option value="dramatic">Dramatic</option>
+                                <option value="peaceful">Peaceful</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Tempo (BPM)</label>
+                            <input 
+                                type="range" 
+                                id="tempoSlider" 
+                                min="60" 
+                                max="180" 
+                                value="120"
+                                class="w-full"
+                            >
+                            <div class="flex justify-between text-xs text-gray-400">
+                                <span>60</span>
+                                <span id="tempoValue" class="text-purple-400">120</span>
+                                <span>180</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generation Settings -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Generation Settings</h3>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Duration (seconds)</label>
+                            <input 
+                                type="range" 
+                                id="durationSlider" 
+                                min="5" 
+                                max="60" 
+                                value="30"
+                                class="w-full"
+                            >
+                            <div class="flex justify-between text-xs text-gray-400">
+                                <span>5s</span>
+                                <span id="durationValue" class="text-purple-400">30s</span>
+                                <span>60s</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">Quality Mode</label>
+                            <div class="flex space-x-2">
+                                <button class="quality-btn flex-1 px-3 py-2 bg-gray-700 rounded-lg hover:bg-purple-600 transition" data-quality="fast">
+                                    <i class="fas fa-bolt text-sm"></i> Fast
+                                </button>
+                                <button class="quality-btn flex-1 px-3 py-2 bg-purple-600 rounded-lg" data-quality="balanced">
+                                    <i class="fas fa-balance-scale text-sm"></i> Balanced
+                                </button>
+                                <button class="quality-btn flex-1 px-3 py-2 bg-gray-700 rounded-lg hover:bg-purple-600 transition" data-quality="quality">
+                                    <i class="fas fa-gem text-sm"></i> Quality
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2">
+                                <input type="checkbox" id="useBeamSearch" class="mr-2">
+                                Use Beam Search
+                                <span class="text-xs text-gray-400">(Higher quality, slower)</span>
+                            </label>
+                            <div id="beamSearchOptions" class="mt-2 hidden">
+                                <input 
+                                    type="range" 
+                                    id="numBeamsSlider" 
+                                    min="2" 
+                                    max="8" 
+                                    value="4"
+                                    class="w-full"
+                                >
+                                <div class="flex justify-between text-xs text-gray-400">
+                                    <span>2 beams</span>
+                                    <span id="numBeamsValue" class="text-purple-400">4 beams</span>
+                                    <span>8 beams</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings (Collapsible) -->
+                <details class="mb-6">
+                    <summary class="cursor-pointer text-sm text-purple-400 hover:text-purple-300">
+                        <i class="fas fa-cog mr-1"></i> Advanced Settings
+                    </summary>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Temperature</label>
+                            <input 
+                                type="number" 
+                                id="temperatureInput" 
+                                min="0.1" 
+                                max="2.0" 
+                                step="0.1" 
+                                value="1.0"
+                                class="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Top-K</label>
+                            <input 
+                                type="number" 
+                                id="topKInput" 
+                                min="1" 
+                                max="100" 
+                                value="50"
+                                class="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Top-P</label>
+                            <input 
+                                type="number" 
+                                id="topPInput" 
+                                min="0.1" 
+                                max="1.0" 
+                                step="0.1" 
+                                value="0.9"
+                                class="w-full px-3 py-2 bg-gray-700 rounded-lg text-sm"
+                            >
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Generate Button -->
+                <div class="flex justify-center">
+                    <button 
+                        id="generateBtn"
+                        class="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold text-lg transition transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <i class="fas fa-magic mr-2"></i> Generate Music
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generation Progress -->
+        <div id="generationProgress" class="hidden max-w-4xl mx-auto mb-8">
+            <div class="bg-gray-800 rounded-lg shadow-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Generating Your Music...
+                    </h3>
+                    <button id="cancelBtn" class="text-red-400 hover:text-red-300">
+                        <i class="fas fa-times-circle"></i> Cancel
+                    </button>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
+                    <div id="progressBar" class="bg-purple-600 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-400">Initializing...</p>
+            </div>
+        </div>
+
+        <!-- Audio Player -->
+        <div id="audioPlayer" class="hidden max-w-4xl mx-auto mb-8">
+            <div class="bg-gray-800 rounded-lg shadow-xl p-6">
+                <h3 class="text-lg font-semibold mb-4">Your Generated Music</h3>
+                
+                <!-- Waveform Visualization -->
+                <div class="mb-4">
+                    <canvas id="waveform" class="w-full h-32 bg-gray-700 rounded"></canvas>
+                </div>
+
+                <!-- Audio Controls -->
+                <audio id="audioElement" controls class="w-full mb-4"></audio>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-3 justify-center">
+                    <button class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                        <i class="fas fa-download mr-2"></i> Download
+                    </button>
+                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                        <i class="fas fa-share-alt mr-2"></i> Share
+                    </button>
+                    <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition">
+                        <i class="fas fa-save mr-2"></i> Save to Library
+                    </button>
+                    <button class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition">
+                        <i class="fas fa-redo mr-2"></i> Generate Again
+                    </button>
+                </div>
+
+                <!-- Metadata Display -->
+                <div class="mt-4 pt-4 border-t border-gray-700">
+                    <h4 class="font-semibold mb-2">Generation Details</h4>
+                    <div id="metadata" class="grid grid-cols-2 gap-2 text-sm text-gray-400"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Streaming Interface -->
+        <div id="streaming" class="mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-center">Live Streaming Generation</h2>
+            
+            <div class="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-xl p-6">
+                <div class="mb-6">
+                    <p class="text-gray-400 mb-4">
+                        Experience real-time music generation with our streaming API. Music is generated and played as it's created!
+                    </p>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">Streaming Prompt</label>
+                        <input 
+                            type="text" 
+                            id="streamingPrompt"
+                            class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                            placeholder="Describe the music to stream..."
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <button id="startStreamBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition">
+                            <i class="fas fa-play mr-2"></i> Start
+                        </button>
+                        <button id="pauseStreamBtn" class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition" disabled>
+                            <i class="fas fa-pause mr-2"></i> Pause
+                        </button>
+                        <button id="resumeStreamBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition" disabled>
+                            <i class="fas fa-play-circle mr-2"></i> Resume
+                        </button>
+                        <button id="stopStreamBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition" disabled>
+                            <i class="fas fa-stop mr-2"></i> Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Streaming Visualization -->
+                <div class="mb-4">
+                    <canvas id="streamingWaveform" class="w-full h-24 bg-gray-700 rounded"></canvas>
+                </div>
+
+                <!-- Streaming Stats -->
+                <div id="streamingStats" class="grid grid-cols-3 gap-4 text-center text-sm">
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-2xl font-bold text-purple-400" id="chunksGenerated">0</div>
+                        <div class="text-gray-400">Chunks</div>
+                    </div>
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-2xl font-bold text-green-400" id="streamDuration">0s</div>
+                        <div class="text-gray-400">Duration</div>
+                    </div>
+                    <div class="bg-gray-700 rounded p-3">
+                        <div class="text-2xl font-bold text-blue-400" id="streamLatency">0ms</div>
+                        <div class="text-gray-400">Latency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Music Library -->
+        <div id="library" class="mb-12">
+            <h2 class="text-3xl font-bold mb-6 text-center">Your Music Library</h2>
+            
+            <div class="max-w-6xl mx-auto">
+                <div id="libraryGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Library items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 mt-12 py-6">
+        <div class="container mx-auto px-4 text-center text-gray-400">
+            <p>&copy; 2024 MusicGen AI. Powered by advanced transformer models.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/audio.js"></script>
+    <script src="/static/js/streaming.js"></script>
+    <script src="/static/js/ui.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

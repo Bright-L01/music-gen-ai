@@ -1,0 +1,37 @@
+# Default streaming configuration
+
+# Chunk settings
+chunk_duration: 1.0  # Duration of each audio chunk in seconds
+overlap_duration: 0.25  # Overlap between chunks for smooth transitions
+lookahead_chunks: 2  # Number of chunks to generate ahead
+
+# Generation parameters
+temperature: 0.9  # Lower for more stable streaming
+top_k: 40
+top_p: 0.9
+repetition_penalty: 1.15
+
+# Quality vs latency trade-offs
+max_latency_ms: 500  # Maximum acceptable latency
+quality_mode: "balanced"  # "fast", "balanced", "quality"
+
+# Memory management
+max_context_length: 2048  # Maximum tokens to keep in context
+context_window_overlap: 256  # Overlap when sliding context window
+
+# Streaming controls
+enable_interruption: true  # Allow real-time interruption/modification
+adaptive_quality: true  # Adjust quality based on network conditions
+
+# Buffer management
+buffer_size: 8  # Number of chunks to buffer
+min_buffer_size: 2  # Minimum buffer before starting playback
+
+# Audio processing
+crossfade_duration: 0.1  # Duration of crossfade between chunks
+sample_rate: 24000  # Audio sample rate
+
+# Network settings
+max_concurrent_sessions: 5  # Maximum concurrent streaming sessions
+session_timeout_minutes: 5  # Timeout for inactive sessions
+heartbeat_interval_seconds: 30  # WebSocket heartbeat interval

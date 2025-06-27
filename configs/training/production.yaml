@@ -1,0 +1,41 @@
+# Production training configuration for best results
+
+# @package _global_
+defaults:
+  - base
+
+# Optimization for production
+learning_rate: 5e-4
+weight_decay: 0.01
+max_steps: 200000
+warmup_steps: 10000
+
+# Conservative scheduling for stability
+lr_scheduler: cosine
+min_lr_ratio: 0.05
+
+# Validation and checkpointing
+val_check_interval: 0.1  # More frequent validation
+save_every_n_steps: 2000
+save_top_k: 5
+
+# Enable all optimizations
+use_progressive_training: true
+compile_model: true
+use_mixed_precision: true
+precision: "16-mixed"
+
+# Longer sequence schedule for production
+sequence_length_schedule:
+  - [0, 256]
+  - [10000, 512]
+  - [25000, 1024] 
+  - [50000, 2048]
+  - [100000, 4096]
+  - [150000, 8192]
+
+# More conservative gradient clipping
+gradient_clip_val: 0.5
+
+# Less frequent logging to reduce overhead
+log_every_n_steps: 200

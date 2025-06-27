@@ -1,0 +1,29 @@
+# Debug training configuration for fast iteration
+
+# @package _global_
+defaults:
+  - base
+
+# Fast training for debugging
+learning_rate: 1e-3
+max_steps: 100
+warmup_steps: 10
+
+# Frequent validation and logging
+val_check_interval: 10
+log_every_n_steps: 5
+
+# Disable slow features
+use_progressive_training: false
+compile_model: false
+use_mixed_precision: false
+
+# Memory efficient
+accumulate_grad_batches: 1
+gradient_clip_val: 1.0
+
+# Save frequently for debugging
+save_every_n_steps: 20
+
+# Disable complex scheduling
+lr_scheduler: constant

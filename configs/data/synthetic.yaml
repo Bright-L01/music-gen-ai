@@ -1,0 +1,43 @@
+# Synthetic dataset configuration for testing
+
+dataset_name: synthetic
+data_dir: ""  # Not needed for synthetic
+
+# Dataset size
+num_samples: 1000
+
+# Data processing
+max_audio_length: 10.0
+sample_rate: 24000
+max_text_length: 512
+
+# Augmentation settings
+augment_audio: true
+augment_text: true
+cache_audio_tokens: false
+augmentation_strength: moderate  # light, moderate, strong
+use_adaptive_augmentation: false
+
+# DataLoader settings optimized for synthetic data
+batch_size: 32
+num_workers: 0  # No multiprocessing needed
+pin_memory: false
+shuffle: true
+drop_last: true
+
+# Simple conditioning vocabulary
+conditioning_vocab:
+  genre:
+    jazz: 0
+    classical: 1
+    rock: 2
+    electronic: 3
+    ambient: 4
+    folk: 5
+  mood:
+    happy: 0
+    sad: 1
+    energetic: 2
+    calm: 3
+    dramatic: 4
+    peaceful: 5
