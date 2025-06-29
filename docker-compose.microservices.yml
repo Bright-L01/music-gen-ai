@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # API Gateway - Main entry point
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: music-gen-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - GENERATION_SERVICE_URL=http://generation:8001
+      - AUDIO_SERVICE_URL=http://audio-processing:8002
+      - USER_SERVICE_URL=http://user-management:8003
+      - JWT_SECRET=${JWT_SECRET:-music-gen-secret-key-change-in-production}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - generation
+      - audio-processing
+      - user-management
+      - redis
+      - postgres
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+
+  # Generation Service
+  generation:
+    build:
+      context: ./services/generation
+      dockerfile: Dockerfile
+    container_name: music-gen-generation
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PATH=/app/storage
+      - JWT_SECRET=${JWT_SECRET:-music-gen-secret-key-change-in-production}
+      - SERVICE_API_KEY=${SERVICE_API_KEY:-internal-service-key}
+      - TRANSFORMERS_CACHE=/app/cache
+      - HF_HOME=/app/cache
+      - TORCH_HOME=/app/cache
+    volumes:
+      - generation_storage:/app/storage
+      - model_cache:/app/cache
+    depends_on:
+      - redis
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  # Audio Processing Service
+  audio-processing:
+    build:
+      context: ./services/audio-processing
+      dockerfile: Dockerfile
+    container_name: music-gen-audio
+    environment:
+      - STORAGE_PATH=/app/storage
+      - JWT_SECRET=${JWT_SECRET:-music-gen-secret-key-change-in-production}
+      - SERVICE_API_KEY=${SERVICE_API_KEY:-internal-service-key}
+      - USE_S3=false
+    volumes:
+      - audio_storage:/app/storage
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # User Management Service
+  user-management:
+    build:
+      context: ./services/user-management
+      dockerfile: Dockerfile
+    container_name: music-gen-users
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/user_management
+      - JWT_SECRET=${JWT_SECRET:-music-gen-secret-key-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_HOURS=24
+    depends_on:
+      - postgres
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: music-gen-postgres
+    environment:
+      - POSTGRES_DB=user_management
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: music-gen-redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - music-gen-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  generation_storage:
+    driver: local
+  audio_storage:
+    driver: local
+  model_cache:
+    driver: local
+
+networks:
+  music-gen-network:
+    driver: bridge

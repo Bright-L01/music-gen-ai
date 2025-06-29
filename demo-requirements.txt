@@ -1,0 +1,8 @@
+# Demo CLI tool requirements
+click==8.1.7
+httpx==0.25.2
+rich==13.7.0
+
+# Optional for audio playback
+# pygame==2.5.2
+# pydub==0.25.1
