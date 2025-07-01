@@ -1,7 +1,7 @@
 # 🎵 MusicGen AI - Advanced Text-to-Music Generation
 
-[![CI Pipeline](https://github.com/username/music_gen/workflows/CI%20Pipeline/badge.svg)](https://github.com/username/music_gen/actions)
-[![codecov](https://codecov.io/gh/username/music_gen/branch/main/graph/badge.svg)](https://codecov.io/gh/username/music_gen)
+[![CI Pipeline](https://github.com/Bright-L01/music_gen/workflows/CI%20Pipeline/badge.svg)](https://github.com/Bright-L01/music_gen/actions)
+[![codecov](https://codecov.io/gh/Bright-L01/music_gen/branch/main/graph/badge.svg)](https://codecov.io/gh/Bright-L01/music_gen)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -27,7 +27,7 @@ MusicGen AI is a production-ready, state-of-the-art text-to-music generation sys
 pip install music-gen-ai
 
 # Or install from source
-git clone https://github.com/username/music_gen.git
+git clone https://github.com/Bright-L01/music_gen.git
 cd music_gen
 pip install -e .
 ```
@@ -564,7 +564,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone repository
-git clone https://github.com/username/music_gen.git
+git clone https://github.com/Bright-L01/music_gen.git
 cd music_gen
 
 # Install development dependencies
@@ -611,7 +611,7 @@ If you use MusicGen AI in your research, please cite:
   title={MusicGen AI: Advanced Text-to-Music Generation},
   author={Your Name},
   year={2024},
-  url={https://github.com/username/music_gen}
+  url={https://github.com/Bright-L01/music_gen}
 }
 ```
 
@@ -619,7 +619,7 @@ If you use MusicGen AI in your research, please cite:
 
 - 📧 **Email**: support@musicgen-ai.com
 - 💬 **Discord**: [Join our community](https://discord.gg/musicgen-ai)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/username/music_gen/issues)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/Bright-L01/music_gen/issues)
 - 📖 **Documentation**: [Full Documentation](https://musicgen-ai.readthedocs.io/)
 
 ---
