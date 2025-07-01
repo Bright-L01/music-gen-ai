@@ -49,13 +49,13 @@ class TestAudioTokenizerModel:
             {"model_name": "facebook/encodec_24khz", "sample_rate": 24000},
         ]
         model = MultiResolutionTokenizer(model_configs).to(device)
-        
+
         # Test encoding
         audio = torch.randn(1, 1, 24000).to(device)  # 1 second of audio
         results = model(audio=audio, mode="encode")
         assert isinstance(results, list)
         assert len(results) == 1  # One tokenizer result
-        
+
         # Test decoding
         codes, scales = results[0]
         audio_decoded = model(multi_codes=results, mode="decode")

@@ -49,14 +49,14 @@ class MasteringChain:
         if eq_settings or compression_settings or limiter_settings:
             # Create temporary chain with custom settings
             temp_chain = EffectChain(self.sample_rate)
-            
+
             # Add EQ with custom settings
             if eq_settings:
                 eq = EQ(self.sample_rate)
                 # Apply EQ settings (simplified implementation)
                 temp_chain.add_effect("eq", eq)
-            
-            # Add compressor with custom settings  
+
+            # Add compressor with custom settings
             if compression_settings:
                 comp = Compressor(
                     self.sample_rate,
@@ -67,7 +67,7 @@ class MasteringChain:
                     makeup_gain=compression_settings.get("makeup_gain", 3),
                 )
                 temp_chain.add_effect("compressor", comp)
-            
+
             # Add limiter with custom settings
             if limiter_settings:
                 limiter = Limiter(
@@ -77,7 +77,7 @@ class MasteringChain:
                     lookahead=limiter_settings.get("lookahead", 0.005),
                 )
                 temp_chain.add_effect("limiter", limiter)
-            
+
             return temp_chain.process(audio)
-        
+
         return self.chain.process(audio)

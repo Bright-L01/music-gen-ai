@@ -167,11 +167,29 @@ class TestLoggingIntegration:
                 base = super().format(record)
                 extras = []
                 for key, value in record.__dict__.items():
-                    if key not in ['name', 'msg', 'args', 'levelname', 'levelno', 
-                                   'pathname', 'filename', 'module', 'lineno', 
-                                   'funcName', 'created', 'msecs', 'relativeCreated',
-                                   'thread', 'threadName', 'processName', 'process',
-                                   'stack_info', 'exc_info', 'exc_text', 'message']:
+                    if key not in [
+                        "name",
+                        "msg",
+                        "args",
+                        "levelname",
+                        "levelno",
+                        "pathname",
+                        "filename",
+                        "module",
+                        "lineno",
+                        "funcName",
+                        "created",
+                        "msecs",
+                        "relativeCreated",
+                        "thread",
+                        "threadName",
+                        "processName",
+                        "process",
+                        "stack_info",
+                        "exc_info",
+                        "exc_text",
+                        "message",
+                    ]:
                         extras.append(f"{key}={value}")
                 if extras:
                     return f"{base} | {' '.join(extras)}"
