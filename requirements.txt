@@ -20,6 +20,7 @@ wandb>=0.15.0
 # Web API
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
+python-json-logger>=2.0.0
 python-multipart>=0.0.6
 aiofiles>=23.0.0
 
@@ -60,9 +61,7 @@ gunicorn>=20.0.0
 prometheus-client>=0.16.0
 
 # Monitoring and observability
-opentelemetry-api>=1.17.0
-opentelemetry-sdk>=1.17.0
-opentelemetry-exporter-prometheus>=1.12.0
+
 
 # Optional audio features (install separately if needed)
 # torchvggish  # For FAD computation
