@@ -28,7 +28,7 @@ def setup_logging(
     formats = {
         "simple": "%(levelname)s - %(name)s - %(message)s",
         "detailed": "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
-        "json": "%(asctime)s %(name)s %(levelname)s %(filename)s %(lineno)d %(message)s",
+        "json": "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
     }
 
     log_format = formats.get(format_style, formats["detailed"])
@@ -41,10 +41,6 @@ def setup_logging(
             "standard": {
                 "format": log_format,
                 "datefmt": "%Y-%m-%d %H:%M:%S",
-            },
-            "json": {
-                "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-                "format": "%(asctime)s %(name)s %(levelname)s %(filename)s %(lineno)d %(message)s",
             },
         },
         "handlers": {},
@@ -78,7 +74,7 @@ def setup_logging(
         config["handlers"]["console"] = {
             "class": "logging.StreamHandler",
             "level": level,
-            "formatter": "json" if format_style == "json" else "standard",
+            "formatter": "standard",
             "stream": "ext://sys.stdout",
         }
         handler_names.append("console")
@@ -91,7 +87,7 @@ def setup_logging(
         config["handlers"]["file"] = {
             "class": "logging.handlers.RotatingFileHandler",
             "level": level,
-            "formatter": "json" if format_style == "json" else "standard",
+            "formatter": "standard",
             "filename": str(log_path),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
@@ -105,7 +101,7 @@ def setup_logging(
         config["handlers"]["error_file"] = {
             "class": "logging.handlers.RotatingFileHandler",
             "level": "ERROR",
-            "formatter": "json" if format_style == "json" else "standard",
+            "formatter": "standard",
             "filename": str(error_log_path),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
