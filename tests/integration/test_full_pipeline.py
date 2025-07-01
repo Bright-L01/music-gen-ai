@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch
 from fastapi.testclient import TestClient
 
-from music_gen.api.main import app
+from music_gen.api.app import app
 from music_gen.data import create_dataloader, create_dataset
 from music_gen.evaluation import AudioQualityMetrics
 from music_gen.generation import BeamSearchConfig, beam_search_generate

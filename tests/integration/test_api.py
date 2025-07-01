@@ -2,14 +2,14 @@
 Integration tests for FastAPI server.
 """
 
+import io
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 import torch
-import io
+from fastapi.testclient import TestClient
 
-from music_gen.api.main import app
+from music_gen.api.app import app
 
 
 @pytest.fixture

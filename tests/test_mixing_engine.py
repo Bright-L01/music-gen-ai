@@ -7,11 +7,11 @@ import torch
 from music_gen.audio.mixing import (
     AutomationLane,
     EffectChain,
-    InterpolationType,
     MixingConfig,
     MixingEngine,
     TrackConfig,
 )
+from music_gen.audio.mixing.automation import InterpolationType
 from music_gen.audio.mixing.effects import (
     EQ,
     Chorus,

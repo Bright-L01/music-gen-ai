@@ -7,11 +7,10 @@ Handles model loading, caching, and lifecycle management.
 import gc
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 import torch
 
-from ..optimization.fast_generator import FastMusicGenerator
 from ..optimization.fast_generator import FastMusicGenerator
 
 logger = logging.getLogger(__name__)

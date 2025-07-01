@@ -2,9 +2,10 @@
 Health check endpoints for Music Gen AI API.
 """
 
+from typing import Any, Dict, Optional
+
 import torch
 from fastapi import APIRouter
-from typing import Dict, Any, Optional
 
 router = APIRouter()
 

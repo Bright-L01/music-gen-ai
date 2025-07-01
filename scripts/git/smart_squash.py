@@ -8,7 +8,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
 
 
 def run_command(cmd: list, check: bool = True) -> subprocess.CompletedProcess:
