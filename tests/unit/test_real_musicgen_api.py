@@ -23,11 +23,12 @@ class TestGenerationApi:
 
         # Test response model validation
         response = GenerationResponse(
-            audio_url="/outputs/test.wav",
+            task_id="test-task-123",
+            status="completed",
+            audio_url="/download/test-task-123",
             duration=10.0,
-            prompt="Generate upbeat music",
-            format="wav",
-            sample_rate=32000,
+            metadata={"prompt": "Generate upbeat music"}
         )
-        assert response.audio_url == "/outputs/test.wav"
-        assert response.duration == 10.0
+        assert response.task_id == "test-task-123"
+        assert response.status == "completed"
+        assert response.audio_url == "/download/test-task-123"
