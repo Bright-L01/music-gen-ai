@@ -91,7 +91,7 @@ CMD ["gunicorn", "music_gen.api.main:app", \
      "--preload"]
 
 # GPU-enabled production stage
-FROM nvidia/cuda:11.8-runtime-ubuntu20.04 as gpu-production
+FROM nvidia/cuda:12.3.2-runtime-ubuntu22.04 as gpu-production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

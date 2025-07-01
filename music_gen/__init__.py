@@ -12,6 +12,7 @@ try:
     from .models.musicgen import MusicGenModel
 except ImportError as e:
     import warnings
+
     warnings.warn(f"Optional dependencies not installed: {e}")
     MusicGenModel = None
     MusicGenerator = None

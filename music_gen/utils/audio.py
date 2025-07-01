@@ -36,10 +36,13 @@ def load_audio_file(
     """
     try:
         # Load audio file
+        # Temporarily load to get sample rate, then reload with offset/duration
+        temp_waveform, temp_sample_rate = torchaudio.load(str(file_path))
+
         waveform, sample_rate = torchaudio.load(
             str(file_path),
-            frame_offset=int(offset * sample_rate) if offset > 0 else 0,
-            num_frames=int(duration * sample_rate) if duration else -1,
+            frame_offset=int(offset * temp_sample_rate) if offset > 0 else 0,
+            num_frames=int(duration * temp_sample_rate) if duration else -1,
         )
 
         # Convert to mono if requested

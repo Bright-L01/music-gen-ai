@@ -38,40 +38,32 @@ class ModelError(MusicGenError):
     """Errors related to model loading, initialization, or execution."""
 
 
-
 class AudioProcessingError(MusicGenError):
     """Errors related to audio processing operations."""
-
 
 
 class DataLoadingError(MusicGenError):
     """Errors related to data loading and preprocessing."""
 
 
-
 class GenerationError(MusicGenError):
     """Errors during music generation."""
-
 
 
 class ValidationError(MusicGenError):
     """Errors related to input validation."""
 
 
-
 class ConfigurationError(MusicGenError):
     """Errors related to configuration and setup."""
-
 
 
 class ResourceError(MusicGenError):
     """Errors related to resource availability (memory, disk, etc.)."""
 
 
-
 class APIError(MusicGenError):
     """Errors related to API operations."""
-
 
 
 def handle_exceptions(

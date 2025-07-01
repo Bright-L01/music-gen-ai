@@ -13,7 +13,7 @@ router = APIRouter()
 async def health_check() -> Dict[str, Any]:
     """
     Basic health check endpoint.
-    
+
     Returns:
         Health status information
     """
@@ -24,7 +24,7 @@ async def health_check() -> Dict[str, Any]:
             "cached": torch.cuda.memory_reserved() / 1024**3,  # GB
             "max_allocated": torch.cuda.max_memory_allocated() / 1024**3,
         }
-    
+
     return {
         "status": "healthy",
         "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -36,16 +36,16 @@ async def health_check() -> Dict[str, Any]:
 async def readiness_check() -> Dict[str, Any]:
     """
     Readiness check endpoint for Kubernetes.
-    
+
     Returns:
         Readiness status
     """
     from ...core.model_manager import ModelManager
-    
+
     try:
         model_manager = ModelManager()
         has_models = model_manager.has_loaded_models()
-        
+
         return {
             "ready": has_models,
             "models_loaded": has_models,
@@ -63,7 +63,7 @@ async def readiness_check() -> Dict[str, Any]:
 async def liveness_check() -> Dict[str, str]:
     """
     Liveness check endpoint for Kubernetes.
-    
+
     Returns:
         Liveness status
     """

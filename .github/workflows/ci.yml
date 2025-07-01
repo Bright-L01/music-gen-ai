@@ -24,7 +24,7 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         
     - name: Cache Python dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-${{ hashFiles('requirements.txt') }}
@@ -66,7 +66,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
         
     - name: Cache Python dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
@@ -84,8 +84,7 @@ jobs:
         # Install test requirements first
         pip install -r requirements-test.txt
         # Install minimal ML dependencies for testing
-        pip install torch --index-url https://download.pytorch.org/whl/cpu
-        pip install transformers
+        pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
         # Try to install the package (may fail due to missing deps)
         pip install -e . || true
         
@@ -224,7 +223,7 @@ jobs:
       continue-on-error: true
       
     - name: Upload security scan results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -255,7 +254,7 @@ jobs:
       continue-on-error: true
       
     - name: Upload documentation
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: docs/_build/html/
