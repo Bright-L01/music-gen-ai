@@ -98,7 +98,7 @@ jobs:
           -v --tb=short
           
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       if: matrix.python-version == '3.11'
       with:
         file: ./coverage.xml
@@ -258,3 +258,4 @@ jobs:
       with:
         name: documentation
         path: docs/_build/html/
+# Trivial change to force workflow re-evaluation
