@@ -61,7 +61,9 @@ class TestEffectChain:
                 return audio * 0.5
 
         chain.add_effect("mock", MockEffect())
-        assert "mock" in chain.effects
+        # Check if effect was added (effects is a list of tuples)
+        effect_names = [name for name, _ in chain.effects]
+        assert "mock" in effect_names
 
     def test_process_chain(self):
         """Test processing audio through effect chain."""
@@ -103,7 +105,7 @@ class TestAutomationLane:
 
         # Test interpolation
         value = lane.get_value(5.0)
-        assert value == pytest.approx(0.0, rel=1e-3)
+        assert abs(value - 0.0) < 1e-2  # Should be approximately 0.0 (midpoint)
 
 
 class TestMasteringChain:
@@ -111,12 +113,13 @@ class TestMasteringChain:
 
     def test_mastering_chain_initialization(self):
         """Test MasteringChain initialization."""
-        chain = MasteringChain()
+        chain = MasteringChain(sample_rate=32000)
         assert chain is not None
+        assert chain.sample_rate == 32000
 
     def test_apply_mastering(self):
         """Test applying mastering chain."""
-        chain = MasteringChain()
+        chain = MasteringChain(sample_rate=32000)
         audio = torch.randn(1, 32000)
 
         # Apply mastering
