@@ -32,7 +32,7 @@ class AutomationLane:
 
     def __init__(
         self,
-        parameter_name: str,
+        parameter_name: str = "automation",
         default_value: float = 0.0,
         min_value: float = 0.0,
         max_value: float = 1.0,

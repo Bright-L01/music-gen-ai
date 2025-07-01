@@ -35,14 +35,29 @@ class TestAudioTokenizerModel:
 
     def test_multiresolutiontokenizer_creation(self, device):
         """Test MultiResolutionTokenizer model creation."""
-        model = MultiResolutionTokenizer()
+        model_configs = [
+            {"model_name": "facebook/encodec_24khz", "sample_rate": 24000},
+            {"model_name": "facebook/encodec_32khz", "sample_rate": 32000},
+        ]
+        model = MultiResolutionTokenizer(model_configs)
         assert isinstance(model, nn.Module)
+        assert model.num_tokenizers == 2
 
     def test_multiresolutiontokenizer_forward(self, device):
         """Test MultiResolutionTokenizer forward pass."""
-        model = MultiResolutionTokenizer().to(device)
-        # TODO: Create appropriate input tensor
-        # input_tensor = torch.randn(1, 128).to(device)
-        # output = model(input_tensor)
-        # assert output.shape == expected_shape
-        pass
+        model_configs = [
+            {"model_name": "facebook/encodec_24khz", "sample_rate": 24000},
+        ]
+        model = MultiResolutionTokenizer(model_configs).to(device)
+        
+        # Test encoding
+        audio = torch.randn(1, 1, 24000).to(device)  # 1 second of audio
+        results = model(audio=audio, mode="encode")
+        assert isinstance(results, list)
+        assert len(results) == 1  # One tokenizer result
+        
+        # Test decoding
+        codes, scales = results[0]
+        audio_decoded = model(multi_codes=results, mode="decode")
+        assert isinstance(audio_decoded, list)
+        assert len(audio_decoded) == 1
