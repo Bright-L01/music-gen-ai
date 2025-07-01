@@ -3,7 +3,7 @@
 __version__ = "0.1.0"
 
 # Core imports
-from .utils.exceptions import MusicGenException
+from .utils.exceptions import MusicGenError
 from .utils.logging import get_logger, setup_logging
 
 # Optional imports with graceful fallback
@@ -18,7 +18,7 @@ except ImportError as e:
 
 __all__ = [
     "__version__",
-    "MusicGenException",
+    "MusicGenError",
     "setup_logging",
     "get_logger",
     "MusicGenModel",
