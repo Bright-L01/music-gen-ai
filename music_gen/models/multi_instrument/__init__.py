@@ -9,7 +9,7 @@ This module provides:
 
 from .conditioning import InstrumentConditioner
 from .config import InstrumentConfig, MultiInstrumentConfig
-from .generator import MultiTrackGenerator
+from .generator import GenerationResult, MultiTrackGenerator, TrackGenerationConfig
 from .model import MultiInstrumentMusicGen
 
 __all__ = [
@@ -18,4 +18,6 @@ __all__ = [
     "MultiInstrumentMusicGen",
     "InstrumentConditioner",
     "MultiTrackGenerator",
+    "TrackGenerationConfig",
+    "GenerationResult",
 ]
