@@ -30,7 +30,8 @@ COPY pyproject.toml .
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install python-json-logger
 
 # Development stage
 FROM base as development
@@ -126,8 +127,7 @@ WORKDIR /app
 # Copy requirements and install dependencies
 COPY requirements.txt pyproject.toml ./
 RUN pip install --upgrade pip && \
-    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
-    pip install -r requirements.txt
+    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118 &&     pip install -r requirements.txt &&     pip install python-json-logger
 
 # Copy source code and install
 COPY . .
