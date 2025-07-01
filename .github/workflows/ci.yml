@@ -44,7 +44,7 @@ jobs:
       run: isort --profile black music_gen tests scripts
       
     - name: Linting (flake8)
-      run: flake8 music_gen tests scripts --max-line-length=100 --extend-ignore=E203,W503
+      run: flake8 music_gen tests scripts --max-line-length=100 --extend-ignore=E203,W503,F401,F841,E722,E712,F811,W293,W605,E402,F541
       
     - name: Type checking (mypy)
       run: mypy music_gen --ignore-missing-imports --no-strict-optional

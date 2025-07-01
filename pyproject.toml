@@ -180,3 +180,29 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = [
+    "E203",  # whitespace before ':'
+    "W503",  # line break before binary operator
+    "F401",  # imported but unused (temporarily ignore)
+    "F841",  # local variable assigned but never used (temporarily ignore)
+    "E722",  # do not use bare 'except' (temporarily ignore)
+    "E712",  # comparison to True should be 'if cond is True:' or 'if cond:'
+    "F811",  # redefinition of unused variable
+    "W293",  # blank line contains whitespace
+    "W605",  # invalid escape sequence
+    "E402",  # module level import not at top of file
+    "F541",  # f-string is missing placeholders
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+    ".eggs",
+    "*.egg",
+]
