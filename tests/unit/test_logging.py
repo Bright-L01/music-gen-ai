@@ -25,14 +25,15 @@ class TestLoggerMixin:
 
     def test_logger_mixin(self):
         """Test LoggerMixin provides logger property."""
+
         class TestClass(LoggerMixin):
             pass
-        
+
         obj = TestClass()
         logger = obj.logger
         assert isinstance(logger, logging.Logger)
-        assert logger.name.endswith('TestClass')
-        
+        assert logger.name.endswith("TestClass")
+
         # Should return same logger instance
         assert obj.logger is logger
 
@@ -42,27 +43,29 @@ class TestLogFunctionCall:
 
     def test_log_function_call_success(self, caplog):
         """Test function call logging decorator."""
+
         @log_function_call
         def test_function(x, y):
             return x + y
-        
+
         with caplog.at_level(logging.DEBUG):
             result = test_function(1, 2)
-        
+
         assert result == 3
         assert "Calling test_function" in caplog.text
         assert "completed in" in caplog.text
-    
+
     def test_log_function_call_error(self, caplog):
         """Test function call logging on error."""
+
         @log_function_call
         def failing_function():
             raise ValueError("Test error")
-        
+
         with caplog.at_level(logging.DEBUG):
             with pytest.raises(ValueError):
                 failing_function()
-        
+
         assert "failed after" in caplog.text
 
 
@@ -72,22 +75,23 @@ class TestLogGPUMemory:
     def test_log_gpu_memory_no_cuda(self, caplog):
         """Test GPU memory logging when CUDA not available."""
         logger = get_logger("test")
-        
+
         # This should not raise error even without CUDA
         log_gpu_memory(logger, "test operation")
-        
+
         # Should be silent when no CUDA
         assert len(caplog.records) == 0 or "GPU Memory" not in caplog.text
-    
+
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_log_gpu_memory_with_cuda(self, caplog):
         """Test GPU memory logging with CUDA available."""
         import torch
+
         logger = get_logger("test")
-        
+
         with caplog.at_level(logging.DEBUG):
             log_gpu_memory(logger, "test operation")
-        
+
         assert "GPU Memory test operation" in caplog.text
         assert "GB allocated" in caplog.text
 
@@ -100,9 +104,9 @@ class TestLoggingSetup:
         # Clear existing handlers
         logger = logging.getLogger("music_gen")
         logger.handlers = []
-        
+
         setup_logging()
-        
+
         # Check logger is configured
         assert len(logger.handlers) > 0
         assert logger.level == logging.INFO
@@ -112,24 +116,24 @@ class TestLoggingSetup:
         # Clear existing handlers
         logger = logging.getLogger("music_gen")
         logger.handlers = []
-        
+
         setup_logging(level="DEBUG")
-        
+
         # Check logger level
         assert logger.level == logging.DEBUG
 
     def test_setup_logging_with_file(self, tmp_path):
         """Test logging setup with file handler."""
         log_file = tmp_path / "test.log"
-        
+
         # Clear existing handlers
         logger = logging.getLogger("music_gen")
         logger.handlers = []
-        
+
         setup_logging(log_file=str(log_file))
-        
+
         # Check file handler exists
-        file_handlers = [h for h in logger.handlers if hasattr(h, 'baseFilename')]
+        file_handlers = [h for h in logger.handlers if hasattr(h, "baseFilename")]
         assert len(file_handlers) > 0
 
     def test_get_logger(self):
@@ -149,26 +153,28 @@ class TestLoggingIntegration:
     def test_json_formatter_logging(self):
         """Test JSON formatter functionality."""
         logger = get_logger("test.json")
-        
+
         # Create a string stream handler with JSON formatter
         import io
+
         stream = io.StringIO()
         handler = logging.StreamHandler(stream)
-        
+
         # Use the json formatter from python-json-logger
         from pythonjsonlogger import jsonlogger
+
         formatter = jsonlogger.JsonFormatter()
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
-        
+
         # Log a message
         logger.info("Test message", extra={"user_id": "123", "action": "test"})
-        
+
         # Check output
         output = stream.getvalue()
         data = json.loads(output.strip())
-        
+
         assert data["message"] == "Test message"
         assert data["user_id"] == "123"
         assert data["action"] == "test"
@@ -180,22 +186,21 @@ class TestFileHandler:
     def test_file_handler_creation(self, tmp_path):
         """Test creating file handler with setup_logging."""
         log_file = tmp_path / "test.log"
-        
+
         # Clear existing handlers
         logger = logging.getLogger("music_gen")
         logger.handlers = []
-        
+
         setup_logging(log_file=str(log_file))
-        
+
         # Log a message
         test_logger = get_logger("music_gen.test")
         test_logger.info("Test message")
-        
+
         # Check file was created and contains message
         assert log_file.exists()
         content = log_file.read_text()
         assert "Test message" in content
-
 
     def test_exception_logging(self, caplog):
         """Test logging exceptions."""

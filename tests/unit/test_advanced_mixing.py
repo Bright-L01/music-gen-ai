@@ -26,19 +26,16 @@ class TestMixingEngine:
         """Test mixing multiple tracks."""
         config = MixingConfig(sample_rate=32000)
         mixer = MixingEngine(config)
-        
+
         # Create tracks
-        tracks = {
-            "track1": torch.randn(1, 32000),
-            "track2": torch.randn(1, 32000)
-        }
-        
+        tracks = {"track1": torch.randn(1, 32000), "track2": torch.randn(1, 32000)}
+
         # Create track configs
         track_configs = {
             "track1": TrackConfig(name="track1", volume=0.8),
-            "track2": TrackConfig(name="track2", volume=0.6)
+            "track2": TrackConfig(name="track2", volume=0.6),
         }
-        
+
         # Mix tracks
         mixed = mixer.mix(tracks, track_configs)
         assert mixed is not None
@@ -57,12 +54,12 @@ class TestEffectChain:
     def test_add_effect(self):
         """Test adding effects to chain."""
         chain = EffectChain(sample_rate=32000)
-        
+
         # Mock effect
         class MockEffect:
             def process(self, audio):
                 return audio * 0.5
-        
+
         chain.add_effect("mock", MockEffect())
         assert "mock" in chain.effects
 
@@ -70,7 +67,7 @@ class TestEffectChain:
         """Test processing audio through effect chain."""
         chain = EffectChain(sample_rate=32000)
         audio = torch.randn(1, 32000)
-        
+
         # Process through empty chain
         processed = chain.process(audio)
         assert processed is not None
@@ -88,22 +85,22 @@ class TestAutomationLane:
     def test_add_automation_point(self):
         """Test adding automation points."""
         lane = AutomationLane()
-        
+
         # Add automation points
         lane.add_point(0.0, 1.0)
         lane.add_point(5.0, 0.5)
         lane.add_point(10.0, 0.8)
-        
+
         assert len(lane.points) == 3
 
     def test_get_value_at_time(self):
         """Test getting interpolated values."""
         lane = AutomationLane()
-        
+
         # Add automation points
         lane.add_point(0.0, -1.0)
         lane.add_point(10.0, 1.0)
-        
+
         # Test interpolation
         value = lane.get_value(5.0)
         assert value == pytest.approx(0.0, rel=1e-3)
@@ -121,15 +118,15 @@ class TestMasteringChain:
         """Test applying mastering chain."""
         chain = MasteringChain()
         audio = torch.randn(1, 32000)
-        
+
         # Apply mastering
         mastered = chain.process(
             audio,
             eq_settings={"low": 0.0, "mid": 0.2, "high": 0.1},
             compression_settings={"threshold": -15.0, "ratio": 3.0},
-            limiter_settings={"threshold": -0.3}
+            limiter_settings={"threshold": -0.3},
         )
-        
+
         assert mastered is not None
         assert mastered.shape == audio.shape
 
@@ -143,25 +140,23 @@ class TestMixingIntegration:
         # Create mixer
         config = MixingConfig(sample_rate=32000)
         mixer = MixingEngine(config)
-        
+
         # Create tracks
         tracks = {}
         track_configs = {}
         for i in range(3):
             tracks[f"track_{i}"] = torch.randn(1, 32000)
             track_configs[f"track_{i}"] = TrackConfig(
-                name=f"track_{i}",
-                volume=0.7,
-                reverb_send=0.2 if i == 0 else 0.0
+                name=f"track_{i}", volume=0.7, reverb_send=0.2 if i == 0 else 0.0
             )
-        
+
         # Mix tracks
         mixed = mixer.mix(tracks, track_configs)
-        
+
         # Master the final mix
         mastering = MasteringChain(sample_rate=32000)
         final = mastering.process(mixed)
-        
+
         assert final is not None
         assert final.shape[0] == 2  # stereo
         assert not torch.isnan(final).any()

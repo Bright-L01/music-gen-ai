@@ -15,7 +15,7 @@ class TestApp:
         """Test that FastAPI app exists."""
         assert app is not None
         assert app.title == "Music Gen AI API"
-    
+
     def test_endpoints_imported(self):
         """Test that all endpoint modules are imported."""
         assert generation is not None

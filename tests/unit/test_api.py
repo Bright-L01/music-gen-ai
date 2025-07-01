@@ -49,7 +49,7 @@ class TestMainAPI:
         # Test that endpoints are under /api/v1
         response = client.get("/api/v1/health")
         assert response.status_code == 200
-        
+
         # Test that root redirects to docs
         response = client.get("/")
         assert response.status_code in [200, 307]  # Redirect or docs
@@ -88,13 +88,12 @@ class TestGenerationEndpoint:
         mock_model.generate.return_value = torch.randn(1, 1, 32000)
         mock_model.sample_rate = 32000
         mock_get_model.return_value = mock_model
-        
+
         # Mock audio save
         mock_save.return_value = "test_output.wav"
 
         response = client.post(
-            "/api/v1/generate",
-            json={"prompt": "Happy jazz music", "duration": 10.0}
+            "/api/v1/generate", json={"prompt": "Happy jazz music", "duration": 10.0}
         )
 
         # Check response
@@ -131,10 +130,10 @@ class TestMultiInstrumentEndpoint:
             json={
                 "tracks": [
                     {"instrument": "piano", "prompt": "Soft piano"},
-                    {"instrument": "drums", "prompt": "Jazz drums"}
+                    {"instrument": "drums", "prompt": "Jazz drums"},
                 ],
-                "duration": 30.0
-            }
+                "duration": 30.0,
+            },
         )
         # Should be 200 or 503 (if model not loaded)
         assert response.status_code in [200, 503]
@@ -153,13 +152,12 @@ class TestStreamingEndpoint:
     def test_streaming_session_creation(self, client):
         """Test creating streaming session."""
         response = client.post(
-            "/api/v1/stream/session",
-            json={"prompt": "Streaming test", "duration": 10.0}
+            "/api/v1/stream/session", json={"prompt": "Streaming test", "duration": 10.0}
         )
-        
+
         # Should be 200 or 503 (if streaming not available)
         assert response.status_code in [200, 503]
-        
+
         if response.status_code == 200:
             data = response.json()
             assert "session_id" in data
@@ -191,7 +189,10 @@ class TestAPIHelpers:
         """Test that request/response models are properly defined."""
         if API_AVAILABLE:
             from music_gen.api.endpoints.generation import GenerationRequest, GenerationResponse
-            from music_gen.api.endpoints.multi_instrument import MultiInstrumentRequest, InstrumentTrack
+            from music_gen.api.endpoints.multi_instrument import (
+                MultiInstrumentRequest,
+                InstrumentTrack,
+            )
             from music_gen.api.endpoints.streaming import StreamingRequest, StreamingResponse
 
             # Test model instantiation

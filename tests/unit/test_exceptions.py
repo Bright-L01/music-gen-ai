@@ -77,17 +77,17 @@ class TestExceptionFormatting:
         error = MusicGenError("Failed to generate music", details={"prompt": "test"})
         formatted = format_error_for_user(error, include_details=False)
         assert formatted == "Failed to generate music"
-        
+
         formatted_with_details = format_error_for_user(error, include_details=True)
         assert "Failed to generate music" in formatted_with_details
         assert "prompt: test" in formatted_with_details
-    
+
     def test_format_generic_error(self):
         """Test formatting generic error."""
         error = ValueError("Invalid value")
         formatted = format_error_for_user(error)
         assert "An unexpected error occurred: Invalid value" in formatted
-    
+
     def test_get_error_summary(self):
         """Test getting error summary."""
         try:
@@ -132,17 +132,17 @@ class TestExceptionHandling:
 
         with pytest.raises(ValueError):
             failing_function()
-    
+
     def test_safe_execute(self):
         """Test safe_execute function."""
         # Test successful execution
         result = safe_execute(lambda x: x * 2, 5)
         assert result == 10
-        
+
         # Test with error
         def failing_func():
             raise ValueError("Error")
-        
+
         result = safe_execute(failing_func, default_return="failed", log_errors=False)
         assert result == "failed"
 
@@ -237,22 +237,24 @@ class TestValidateInput:
 
     def test_validate_input_success(self):
         """Test validation success."""
+
         @validate_input(lambda x: x > 0, "Value must be positive")
         def process_number(value):
             return value * 2
-        
+
         result = process_number(5)
         assert result == 10
-    
+
     def test_validate_input_failure(self):
         """Test validation failure."""
+
         @validate_input(lambda x: x > 0, "Value must be positive")
         def process_number(value):
             return value * 2
-        
+
         with pytest.raises(ValidationError) as exc_info:
             process_number(-5)
-        
+
         assert str(exc_info.value) == "Value must be positive"
 
 
@@ -261,26 +263,28 @@ class TestWithErrorContext:
 
     def test_with_error_context_musicgen_error(self):
         """Test adding context to MusicGenError."""
+
         @with_error_context({"operation": "generation", "model": "musicgen-small"})
         def generate():
             raise GenerationError("Failed to generate", details={"prompt": "test"})
-        
+
         with pytest.raises(GenerationError) as exc_info:
             generate()
-        
+
         assert exc_info.value.details["operation"] == "generation"
         assert exc_info.value.details["model"] == "musicgen-small"
         assert exc_info.value.details["prompt"] == "test"
-    
+
     def test_with_error_context_generic_error(self):
         """Test converting generic error to MusicGenError with context."""
+
         @with_error_context({"operation": "file_read"})
         def read_file():
             raise IOError("File not found")
-        
+
         with pytest.raises(MusicGenError) as exc_info:
             read_file()
-        
+
         assert "Unexpected error in read_file" in str(exc_info.value)
         assert exc_info.value.details["operation"] == "file_read"
         assert "File not found" in exc_info.value.details["original_exception"]
@@ -292,54 +296,54 @@ class TestErrorRecovery:
     def test_error_recovery_success(self):
         """Test error recovery when no error occurs."""
         cleanup_called = False
-        
+
         def cleanup():
             nonlocal cleanup_called
             cleanup_called = True
-        
+
         with ErrorRecovery(log_errors=False) as recovery:
             recovery.add_cleanup(cleanup)
             # No error occurs
-        
+
         # Cleanup should not be called on success
         assert not cleanup_called
-    
+
     def test_error_recovery_with_error(self):
         """Test error recovery when error occurs."""
         cleanup_called = False
-        
+
         def cleanup():
             nonlocal cleanup_called
             cleanup_called = True
-        
+
         with pytest.raises(ValueError):
             with ErrorRecovery(log_errors=False) as recovery:
                 recovery.add_cleanup(cleanup)
                 raise ValueError("Test error")
-        
+
         # Cleanup should be called on error
         assert cleanup_called
-    
+
     def test_error_recovery_multiple_cleanups(self):
         """Test multiple cleanup functions in reverse order."""
         cleanup_order = []
-        
+
         def cleanup1():
             cleanup_order.append(1)
-        
+
         def cleanup2():
             cleanup_order.append(2)
-        
+
         def cleanup3():
             cleanup_order.append(3)
-        
+
         with pytest.raises(ValueError):
             with ErrorRecovery(log_errors=False) as recovery:
                 recovery.add_cleanup(cleanup1)
                 recovery.add_cleanup(cleanup2)
                 recovery.add_cleanup(cleanup3)
                 raise ValueError("Test error")
-        
+
         # Cleanups should be called in reverse order
         assert cleanup_order == [3, 2, 1]
 
