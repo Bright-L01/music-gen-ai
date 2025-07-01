@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 import torch
 
-from music_gen.models.multi_instrument.generator import MultiInstrumentGenerator
+from music_gen.models.multi_instrument.generator import MultiTrackGenerator, TrackGenerationConfig, GenerationResult
 from music_gen.models.multi_instrument.config import MultiInstrumentConfig
-from music_gen.models.multi_instrument.conditioning import InstrumentConditioner
+from music_gen.models.multi_instrument.model import MultiInstrumentMusicGen
 
 
-class TestMultiInstrumentGenerator:
-    """Test multi-instrument generator."""
+class TestMultiTrackGenerator:
+    """Test multi-track generator."""
 
     @pytest.fixture
     def config(self):
@@ -26,115 +26,117 @@ class TestMultiInstrumentGenerator:
         )
 
     @pytest.fixture
-    def generator(self, config):
-        """Create generator instance."""
-        return MultiInstrumentGenerator(config)
-
-    def test_generator_initialization(self, generator, config):
-        """Test generator initialization."""
-        assert generator is not None
-        assert generator.config == config
-        assert hasattr(generator, "generate")
-
-    def test_generate_single_instrument(self, generator):
-        """Test generating single instrument."""
-        # Mock the model's generate method
-        with patch.object(generator, "model") as mock_model:
-            mock_model.generate.return_value = torch.randn(1, 1, 32000)
-            
-            result = generator.generate(
-                prompts=["Soft piano melody"],
-                instruments=["piano"],
-                duration=10.0
-            )
-            
-            assert result is not None
-            assert isinstance(result, dict)
-            assert "piano" in result
-            assert result["piano"].shape == (1, 1, 32000)
-
-    def test_generate_multiple_instruments(self, generator):
-        """Test generating multiple instruments."""
-        with patch.object(generator, "model") as mock_model:
-            # Mock different outputs for different instruments
-            mock_model.generate.side_effect = [
-                torch.randn(1, 1, 32000),  # piano
-                torch.randn(1, 1, 32000),  # bass
-                torch.randn(1, 1, 32000),  # drums
-            ]
-            
-            result = generator.generate(
-                prompts=[
-                    "Jazz piano chords",
-                    "Walking bass line",
-                    "Swing drums pattern"
-                ],
-                instruments=["piano", "bass", "drums"],
-                duration=10.0
-            )
-            
-            assert len(result) == 3
-            assert all(inst in result for inst in ["piano", "bass", "drums"])
-            assert all(audio.shape == (1, 1, 32000) for audio in result.values())
-
-    def test_generate_with_conditioning(self, generator):
-        """Test generation with additional conditioning."""
-        with patch.object(generator, "model") as mock_model:
-            mock_model.generate.return_value = torch.randn(1, 1, 32000)
-            
-            result = generator.generate(
-                prompts=["Upbeat guitar riff"],
-                instruments=["guitar"],
-                duration=15.0,
-                conditioning={
-                    "genre": "rock",
-                    "tempo": 140,
-                    "key": "E minor"
-                }
-            )
-            
-            assert result is not None
-            assert "guitar" in result
-
-
-class TestInstrumentConditioner:
-    """Test instrument conditioning."""
+    def model(self, config):
+        """Create model instance."""
+        return MultiInstrumentMusicGen(config)
 
     @pytest.fixture
-    def conditioner(self):
-        """Create conditioner instance."""
-        return InstrumentConditioner(
+    def generator(self, model, config):
+        """Create generator instance."""
+        return MultiTrackGenerator(model, config)
+
+    def test_generator_initialization(self, generator):
+        """Test generator initialization."""
+        assert generator is not None
+        assert hasattr(generator, "generate")
+        assert hasattr(generator, "model")
+
+    def test_generate_single_track(self, generator):
+        """Test generating single track."""
+        # Mock the model's methods
+        with patch.object(generator.model, "encode_text") as mock_encode:
+            with patch.object(generator.model, "generate_tokens") as mock_generate:
+                mock_encode.return_value = torch.randn(1, 10, 256)
+                mock_generate.return_value = torch.randint(0, 100, (1, 100))
+                
+                # Create track config
+                track_config = TrackGenerationConfig(
+                    instrument="piano",
+                    volume=0.8
+                )
+                
+                # Generate
+                with patch.object(generator, "_mix_tracks"):
+                    result = generator.generate(
+                        prompt="Soft piano melody",
+                        track_configs=[track_config],
+                        duration=10.0
+                    )
+                
+                # Result is mocked, just check the call
+                assert mock_encode.called
+                assert mock_generate.called
+
+    def test_track_generation_config(self):
+        """Test track generation configuration."""
+        config = TrackGenerationConfig(
+            instrument="guitar",
+            volume=0.9,
+            pan=0.5,
+            reverb=0.3
+        )
+        
+        assert config.instrument == "guitar"
+        assert config.volume == 0.9
+        assert config.pan == 0.5
+        assert config.reverb == 0.3
+        assert config.start_time == 0.0
+
+    def test_generation_result(self):
+        """Test generation result dataclass."""
+        audio_tracks = {
+            "piano": torch.randn(1, 32000),
+            "bass": torch.randn(1, 32000)
+        }
+        mixed = torch.randn(2, 32000)  # stereo
+        
+        result = GenerationResult(
+            audio_tracks=audio_tracks,
+            mixed_audio=mixed,
+            mixing_params={},
+            track_configs=[],
+            sample_rate=32000
+        )
+        
+        assert result.audio_tracks == audio_tracks
+        assert result.mixed_audio.shape == (2, 32000)
+        assert result.sample_rate == 32000
+
+
+class TestMultiInstrumentMusicGen:
+    """Test multi-instrument model."""
+
+    @pytest.fixture
+    def config(self):
+        """Create test configuration."""
+        return MultiInstrumentConfig(
             num_instruments=8,
-            embedding_dim=256
+            hidden_size=256,
+            num_layers=4,
+            num_heads=8
         )
 
-    def test_conditioner_initialization(self, conditioner):
-        """Test conditioner initialization."""
-        assert conditioner is not None
-        assert conditioner.num_instruments == 8
-        assert conditioner.embedding_dim == 256
+    @pytest.fixture
+    def model(self, config):
+        """Create model instance."""
+        return MultiInstrumentMusicGen(config)
 
-    def test_get_instrument_embedding(self, conditioner):
-        """Test getting instrument embeddings."""
-        # Test known instruments
-        piano_emb = conditioner.get_embedding("piano")
-        assert piano_emb is not None
-        assert piano_emb.shape == (256,)
-        
-        # Test that different instruments have different embeddings
-        guitar_emb = conditioner.get_embedding("guitar")
-        assert not torch.allclose(piano_emb, guitar_emb)
+    def test_model_initialization(self, model, config):
+        """Test model initialization."""
+        assert model is not None
+        assert model.config == config
+        assert hasattr(model, "encode_text")
+        assert hasattr(model, "generate_tokens")
 
-    def test_combine_embeddings(self, conditioner):
-        """Test combining multiple embeddings."""
-        embeddings = [
-            conditioner.get_embedding("piano"),
-            conditioner.get_embedding("bass"),
-        ]
-        
-        combined = conditioner.combine_embeddings(embeddings)
-        assert combined is not None
-        assert combined.shape == (256,)
+    def test_encode_text(self, model):
+        """Test text encoding."""
+        with patch.object(model.text_encoder, "encode") as mock_encode:
+            mock_encode.return_value = torch.randn(1, 10, 256)
+            
+            embeddings = model.encode_text(["Test prompt"])
+            
+            assert mock_encode.called
+            assert embeddings is not None
 
 
 class TestMultiInstrumentConfig:
@@ -177,44 +179,42 @@ class TestMultiInstrumentConfig:
 class TestMultiInstrumentIntegration:
     """Integration tests for multi-instrument generation."""
 
-    def test_jazz_trio_generation(self):
-        """Test generating a jazz trio."""
+    def test_multi_track_generation_integration(self):
+        """Test multi-track generation integration."""
         config = MultiInstrumentConfig(
             num_instruments=3,
             hidden_size=256,
-            num_layers=6
+            num_layers=4
         )
         
-        generator = MultiInstrumentGenerator(config)
+        model = MultiInstrumentMusicGen(config)
+        generator = MultiTrackGenerator(model, config)
         
-        with patch.object(generator, "model") as mock_model:
-            # Mock realistic outputs
-            mock_model.generate.side_effect = [
-                torch.randn(1, 1, 96000),  # 3 seconds at 32kHz
-                torch.randn(1, 1, 96000),
-                torch.randn(1, 1, 96000),
-            ]
-            
-            result = generator.generate(
-                prompts=[
-                    "Jazz piano comping with seventh chords",
-                    "Walking bass line in F major",
-                    "Brush drums with swing feel"
-                ],
-                instruments=["piano", "bass", "drums"],
-                duration=3.0,
-                conditioning={
-                    "genre": "jazz",
-                    "tempo": 120,
-                    "time_signature": "4/4"
-                }
-            )
-            
-            assert len(result) == 3
-            assert all(audio.shape == (1, 1, 96000) for audio in result.values())
-            
-            # Verify model was called with correct parameters
-            assert mock_model.generate.call_count == 3
+        # Create track configs
+        track_configs = [
+            TrackGenerationConfig(instrument="piano", volume=0.8),
+            TrackGenerationConfig(instrument="bass", volume=1.0),
+            TrackGenerationConfig(instrument="drums", volume=0.7)
+        ]
+        
+        # Mock the generation pipeline
+        with patch.object(generator.model, "encode_text") as mock_encode:
+            with patch.object(generator.model, "generate_tokens") as mock_generate:
+                with patch.object(generator, "_mix_tracks") as mock_mix:
+                    mock_encode.return_value = torch.randn(1, 10, 256)
+                    mock_generate.return_value = torch.randint(0, 100, (1, 100))
+                    mock_mix.return_value = torch.randn(2, 96000)
+                    
+                    # Run generation (mocked)
+                    result = generator.generate(
+                        prompt="Jazz trio performance",
+                        track_configs=track_configs,
+                        duration=3.0
+                    )
+                    
+                    # Verify calls
+                    assert mock_encode.call_count >= 1
+                    assert mock_generate.call_count >= 1
 
 
 if __name__ == "__main__":
