@@ -9,202 +9,87 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import torch
 
 from music_gen.utils.logging import (
-    ColoredFormatter,
-    PerformanceLogger,
-    StructuredFormatter,
-    create_console_handler,
-    create_file_handler,
     get_logger,
-    log_execution_time,
-    log_memory_usage,
     setup_logging,
+    LoggerMixin,
+    log_function_call,
+    log_gpu_memory,
 )
 
 
-class TestColoredFormatter:
-    """Test ColoredFormatter class."""
+class TestLoggerMixin:
+    """Test LoggerMixin class."""
 
-    def test_colored_formatter_creation(self):
-        """Test creating colored formatter."""
-        formatter = ColoredFormatter()
-        assert isinstance(formatter, logging.Formatter)
-
-    def test_colored_formatter_format(self):
-        """Test formatting with colors."""
-        formatter = ColoredFormatter()
-
-        # Create log records for different levels
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=10,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-
-        formatted = formatter.format(record)
-        assert "Test message" in formatted
-        assert "\033[" in formatted  # ANSI color code
-
-    def test_colored_formatter_levels(self):
-        """Test different log levels have different colors."""
-        formatter = ColoredFormatter()
-
-        levels = [
-            (logging.DEBUG, "DEBUG"),
-            (logging.INFO, "INFO"),
-            (logging.WARNING, "WARNING"),
-            (logging.ERROR, "ERROR"),
-            (logging.CRITICAL, "CRITICAL"),
-        ]
-
-        formatted_messages = []
-        for level, level_name in levels:
-            record = logging.LogRecord(
-                name="test",
-                level=level,
-                pathname="test.py",
-                lineno=10,
-                msg=f"{level_name} message",
-                args=(),
-                exc_info=None,
-            )
-            formatted_messages.append(formatter.format(record))
-
-        # Each level should have different formatting
-        assert len(set(formatted_messages)) == len(levels)
+    def test_logger_mixin(self):
+        """Test LoggerMixin provides logger property."""
+        class TestClass(LoggerMixin):
+            pass
+        
+        obj = TestClass()
+        logger = obj.logger
+        assert isinstance(logger, logging.Logger)
+        assert logger.name.endswith('TestClass')
+        
+        # Should return same logger instance
+        assert obj.logger is logger
 
 
-class TestStructuredFormatter:
-    """Test StructuredFormatter class."""
+class TestLogFunctionCall:
+    """Test log_function_call decorator."""
 
-    def test_structured_formatter_json(self):
-        """Test JSON structured formatting."""
-        formatter = StructuredFormatter(format_type="json")
-
-        record = logging.LogRecord(
-            name="test.module",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=10,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-        record.created = time.time()
-
-        formatted = formatter.format(record)
-        data = json.loads(formatted)
-
-        assert data["message"] == "Test message"
-        assert data["level"] == "INFO"
-        assert data["logger"] == "test.module"
-        assert "timestamp" in data
-        assert data["file"] == "test.py"
-        assert data["line"] == 10
-
-    def test_structured_formatter_with_extra(self):
-        """Test structured formatting with extra fields."""
-        formatter = StructuredFormatter(format_type="json")
-
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=10,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-
-        # Add extra fields
-        record.user_id = "123"
-        record.request_id = "abc-def"
-        record.duration = 1.5
-
-        formatted = formatter.format(record)
-        data = json.loads(formatted)
-
-        assert data["extra"]["user_id"] == "123"
-        assert data["extra"]["request_id"] == "abc-def"
-        assert data["extra"]["duration"] == 1.5
-
-    def test_structured_formatter_key_value(self):
-        """Test key-value structured formatting."""
-        formatter = StructuredFormatter(format_type="key_value")
-
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="test.py",
-            lineno=10,
-            msg="Test message",
-            args=(),
-            exc_info=None,
-        )
-
-        formatted = formatter.format(record)
-
-        assert "level=INFO" in formatted
-        assert "logger=test" in formatted
-        assert 'message="Test message"' in formatted
-        assert "file=test.py" in formatted
-        assert "line=10" in formatted
+    def test_log_function_call_success(self, caplog):
+        """Test function call logging decorator."""
+        @log_function_call
+        def test_function(x, y):
+            return x + y
+        
+        with caplog.at_level(logging.DEBUG):
+            result = test_function(1, 2)
+        
+        assert result == 3
+        assert "Calling test_function" in caplog.text
+        assert "completed in" in caplog.text
+    
+    def test_log_function_call_error(self, caplog):
+        """Test function call logging on error."""
+        @log_function_call
+        def failing_function():
+            raise ValueError("Test error")
+        
+        with caplog.at_level(logging.DEBUG):
+            with pytest.raises(ValueError):
+                failing_function()
+        
+        assert "failed after" in caplog.text
 
 
-class TestPerformanceLogger:
-    """Test PerformanceLogger class."""
+class TestLogGPUMemory:
+    """Test log_gpu_memory function."""
 
-    def test_performance_logger_creation(self):
-        """Test creating performance logger."""
-        perf_logger = PerformanceLogger("test.performance")
-        assert perf_logger.logger.name == "test.performance"
-
-    def test_log_timing(self):
-        """Test logging execution time."""
-        perf_logger = PerformanceLogger("test")
-
-        with patch.object(perf_logger.logger, "info") as mock_info:
-            perf_logger.log_timing("test_operation", 1.234, {"param": "value"})
-
-            mock_info.assert_called_once()
-            call_args = mock_info.call_args[0][0]
-            assert "test_operation" in call_args
-            assert "1.234" in call_args or "1.23" in call_args
-
-    def test_log_memory(self):
-        """Test logging memory usage."""
-        perf_logger = PerformanceLogger("test")
-
-        with patch.object(perf_logger.logger, "info") as mock_info:
-            perf_logger.log_memory("test_operation", 1024 * 1024 * 100)  # 100 MB
-
-            mock_info.assert_called_once()
-            call_args = mock_info.call_args[0][0]
-            assert "test_operation" in call_args
-            assert "100" in call_args or "MB" in call_args
-
-    def test_log_metrics(self):
-        """Test logging custom metrics."""
-        perf_logger = PerformanceLogger("test")
-
-        metrics = {"accuracy": 0.95, "loss": 0.05, "samples_per_second": 1000}
-
-        with patch.object(perf_logger.logger, "info") as mock_info:
-            perf_logger.log_metrics("training", metrics, {"epoch": 10})
-
-            mock_info.assert_called_once()
-            call_args = mock_info.call_args[0][0]
-            assert "training" in call_args
-
-            # Check extra data
-            extra = mock_info.call_args[1].get("extra", {})
-            assert extra.get("metrics") == metrics
-            assert extra.get("metadata") == {"epoch": 10}
+    def test_log_gpu_memory_no_cuda(self, caplog):
+        """Test GPU memory logging when CUDA not available."""
+        logger = get_logger("test")
+        
+        # This should not raise error even without CUDA
+        log_gpu_memory(logger, "test operation")
+        
+        # Should be silent when no CUDA
+        assert len(caplog.records) == 0 or "GPU Memory" not in caplog.text
+    
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    def test_log_gpu_memory_with_cuda(self, caplog):
+        """Test GPU memory logging with CUDA available."""
+        import torch
+        logger = get_logger("test")
+        
+        with caplog.at_level(logging.DEBUG):
+            log_gpu_memory(logger, "test operation")
+        
+        assert "GPU Memory test operation" in caplog.text
+        assert "GB allocated" in caplog.text
 
 
 class TestLoggingSetup:
@@ -212,31 +97,40 @@ class TestLoggingSetup:
 
     def test_setup_logging_default(self):
         """Test default logging setup."""
-        with patch("logging.basicConfig") as mock_config:
-            setup_logging()
-
-            mock_config.assert_called_once()
-            call_kwargs = mock_config.call_args[1]
-            assert call_kwargs["level"] == logging.INFO
-            assert "format" in call_kwargs
+        # Clear existing handlers
+        logger = logging.getLogger("music_gen")
+        logger.handlers = []
+        
+        setup_logging()
+        
+        # Check logger is configured
+        assert len(logger.handlers) > 0
+        assert logger.level == logging.INFO
 
     def test_setup_logging_custom_level(self):
         """Test logging setup with custom level."""
-        with patch("logging.basicConfig") as mock_config:
-            setup_logging(level="DEBUG")
-
-            call_kwargs = mock_config.call_args[1]
-            assert call_kwargs["level"] == logging.DEBUG
+        # Clear existing handlers
+        logger = logging.getLogger("music_gen")
+        logger.handlers = []
+        
+        setup_logging(level="DEBUG")
+        
+        # Check logger level
+        assert logger.level == logging.DEBUG
 
     def test_setup_logging_with_file(self, tmp_path):
         """Test logging setup with file handler."""
         log_file = tmp_path / "test.log"
-
-        with patch("logging.basicConfig") as mock_config:
-            setup_logging(log_file=str(log_file))
-
-            mock_config.assert_called_once()
-            # File handler should be configured
+        
+        # Clear existing handlers
+        logger = logging.getLogger("music_gen")
+        logger.handlers = []
+        
+        setup_logging(log_file=str(log_file))
+        
+        # Check file handler exists
+        file_handlers = [h for h in logger.handlers if hasattr(h, 'baseFilename')]
+        assert len(file_handlers) > 0
 
     def test_get_logger(self):
         """Test getting logger instance."""
@@ -249,161 +143,59 @@ class TestLoggingSetup:
         assert logger is logger2
 
 
-class TestLogDecorators:
-    """Test logging decorators."""
-
-    def test_log_execution_time_success(self, caplog):
-        """Test execution time logging decorator."""
-
-        @log_execution_time()
-        def slow_function(duration=0.1):
-            time.sleep(duration)
-            return "done"
-
-        with caplog.at_level(logging.INFO):
-            result = slow_function()
-
-        assert result == "done"
-        assert "slow_function" in caplog.text
-        assert "execution time" in caplog.text.lower()
-        assert "0.1" in caplog.text or "100" in caplog.text  # 0.1s or 100ms
-
-    def test_log_execution_time_with_custom_logger(self, caplog):
-        """Test execution time decorator with custom logger."""
-        custom_logger = get_logger("custom.logger")
-
-        @log_execution_time(logger=custom_logger)
-        def test_function():
-            return "result"
-
-        with caplog.at_level(logging.INFO, logger="custom.logger"):
-            result = test_function()
-
-        assert result == "result"
-        assert "test_function" in caplog.text
-
-    def test_log_execution_time_with_prefix(self, caplog):
-        """Test execution time decorator with prefix."""
-
-        @log_execution_time(prefix="API Call")
-        def api_function():
-            return {"status": "ok"}
-
-        with caplog.at_level(logging.INFO):
-            result = api_function()
-
-        assert result == {"status": "ok"}
-        assert "API Call" in caplog.text
-        assert "api_function" in caplog.text
-
-    def test_log_memory_usage(self, caplog):
-        """Test memory usage logging decorator."""
-
-        @log_memory_usage()
-        def memory_intensive_function():
-            # Allocate some memory
-            data = [0] * 1000000
-            return len(data)
-
-        with caplog.at_level(logging.INFO):
-            result = memory_intensive_function()
-
-        assert result == 1000000
-        assert "memory_intensive_function" in caplog.text
-        assert "memory" in caplog.text.lower()
-        assert "MB" in caplog.text or "KB" in caplog.text
-
-    def test_log_memory_usage_threshold(self, caplog):
-        """Test memory usage decorator with threshold."""
-
-        @log_memory_usage(threshold_mb=0.001)  # Very low threshold
-        def small_function():
-            return [1, 2, 3]
-
-        with caplog.at_level(logging.INFO):
-            result = small_function()
-
-        assert result == [1, 2, 3]
-        # Should log because we set a very low threshold
-        assert "memory" in caplog.text.lower()
-
-
-class TestHandlerCreation:
-    """Test handler creation functions."""
-
-    def test_create_file_handler(self, tmp_path):
-        """Test creating file handler."""
-        log_file = tmp_path / "test.log"
-
-        handler = create_file_handler(
-            str(log_file), level=logging.DEBUG, max_bytes=1024 * 1024, backup_count=3
-        )
-
-        assert isinstance(handler, logging.Handler)
-        assert handler.level == logging.DEBUG
-
-        # Test that it can write
-        logger = logging.getLogger("test_file")
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
-
-        logger.info("Test message")
-
-        assert log_file.exists()
-        assert "Test message" in log_file.read_text()
-
-    def test_create_console_handler(self):
-        """Test creating console handler."""
-        handler = create_console_handler(level=logging.WARNING, use_color=True)
-
-        assert isinstance(handler, logging.StreamHandler)
-        assert handler.level == logging.WARNING
-        assert isinstance(handler.formatter, ColoredFormatter)
-
-    def test_create_console_handler_structured(self):
-        """Test creating structured console handler."""
-        handler = create_console_handler(level=logging.INFO, format_type="json")
-
-        assert isinstance(handler, logging.StreamHandler)
-        assert isinstance(handler.formatter, StructuredFormatter)
-
-
 class TestLoggingIntegration:
     """Test integrated logging scenarios."""
 
-    def test_performance_logging_context_manager(self, caplog):
-        """Test performance logging as context manager."""
-        perf_logger = PerformanceLogger("test.perf")
-
-        with perf_logger.timer("database_query") as timer:
-            time.sleep(0.05)
-            timer.metadata = {"query": "SELECT * FROM users"}
-
-        assert "database_query" in caplog.text
-        assert "0.05" in caplog.text or "50" in caplog.text
-
-    def test_structured_logging_with_context(self):
-        """Test structured logging with context."""
-        logger = get_logger("test.structured")
-        handler = create_console_handler(format_type="json")
-        logger.addHandler(handler)
-
-        # Capture output
+    def test_json_formatter_logging(self):
+        """Test JSON formatter functionality."""
+        logger = get_logger("test.json")
+        
+        # Create a string stream handler with JSON formatter
         import io
-
         stream = io.StringIO()
-        handler.stream = stream
-
-        # Log with extra context
-        logger.info("User action", extra={"user_id": "123", "action": "login", "ip": "192.168.1.1"})
-
+        handler = logging.StreamHandler(stream)
+        
+        # Use the json formatter from python-json-logger
+        from pythonjsonlogger import jsonlogger
+        formatter = jsonlogger.JsonFormatter()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        
+        # Log a message
+        logger.info("Test message", extra={"user_id": "123", "action": "test"})
+        
+        # Check output
         output = stream.getvalue()
         data = json.loads(output.strip())
+        
+        assert data["message"] == "Test message"
+        assert data["user_id"] == "123"
+        assert data["action"] == "test"
 
-        assert data["message"] == "User action"
-        assert data["extra"]["user_id"] == "123"
-        assert data["extra"]["action"] == "login"
-        assert data["extra"]["ip"] == "192.168.1.1"
+
+class TestFileHandler:
+    """Test file handler functionality."""
+
+    def test_file_handler_creation(self, tmp_path):
+        """Test creating file handler with setup_logging."""
+        log_file = tmp_path / "test.log"
+        
+        # Clear existing handlers
+        logger = logging.getLogger("music_gen")
+        logger.handlers = []
+        
+        setup_logging(log_file=str(log_file))
+        
+        # Log a message
+        test_logger = get_logger("music_gen.test")
+        test_logger.info("Test message")
+        
+        # Check file was created and contains message
+        assert log_file.exists()
+        content = log_file.read_text()
+        assert "Test message" in content
+
 
     def test_exception_logging(self, caplog):
         """Test logging exceptions."""

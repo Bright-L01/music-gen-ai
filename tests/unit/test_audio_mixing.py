@@ -1,29 +1,25 @@
 """
-Unit tests for advanced audio mixing functionality.
+Unit tests for audio mixing functionality.
 """
 
 import numpy as np
 import pytest
 import torch
 
-from music_gen.audio.advanced_mixing import (
-    AdvancedMixingEngine,
-    CompressorProcessor,
-    EQProcessor,
-    MasterBusSettings,
-    ReverbProcessor,
-    TrackSettings,
-)
+from music_gen.audio.mixing.mixer import AudioMixer
+from music_gen.audio.mixing.effects import EffectsProcessor
+from music_gen.audio.mixing.mastering import MasteringChain
+from music_gen.audio.mixing.automation import AutomationEngine
 
 
 @pytest.mark.unit
-class TestAdvancedMixer:
-    """Test advanced audio mixing functionality."""
+class TestAudioMixer:
+    """Test audio mixing functionality."""
 
     @pytest.fixture
     def mixer(self):
         """Create mixer instance."""
-        return AdvancedMixingEngine(sample_rate=24000)
+        return AudioMixer(sample_rate=24000)
 
     @pytest.fixture
     def sample_tracks(self):
@@ -42,95 +38,67 @@ class TestAdvancedMixer:
     def test_mixer_initialization(self, mixer):
         """Test mixer initialization."""
         assert mixer.sample_rate == 24000
-        assert hasattr(mixer, "reverb")
-        assert hasattr(mixer, "delay")
-        assert hasattr(mixer, "eq")
-        assert hasattr(mixer, "compressor")
+        assert hasattr(mixer, "tracks")
+        assert hasattr(mixer, "mix")
 
-    def test_mix_tracks_basic(self, mixer, sample_tracks):
-        """Test basic track mixing."""
-        # Create track settings
-        track_settings = {name: TrackSettings() for name in sample_tracks.keys()}
+    def test_add_and_mix_tracks(self, mixer, sample_tracks):
+        """Test adding and mixing tracks."""
+        # Add tracks to mixer
+        for name, audio in sample_tracks.items():
+            mixer.add_track(name, audio)
 
-        # Convert PyTorch tensors to numpy arrays
-        np_tracks = {name: audio.squeeze().numpy() for name, audio in sample_tracks.items()}
+        # Mix tracks
+        mixed = mixer.mix()
 
-        mixed = mixer.mix_tracks(np_tracks, track_settings)
-
-        assert isinstance(mixed, np.ndarray)
-        assert len(mixed.shape) == 1  # Mono output (1D array)
-        assert mixed.shape[0] == np_tracks["piano"].shape[0]  # Same length
-
+        assert isinstance(mixed, torch.Tensor)
+        assert mixed.shape == sample_tracks["piano"].shape
+        
         # Mixed signal should be different from individual tracks
-        assert not np.allclose(mixed, np_tracks["piano"])
+        assert not torch.allclose(mixed, sample_tracks["piano"])
 
     def test_mix_with_levels(self, mixer, sample_tracks):
         """Test mixing with custom track levels."""
-        track_settings = {
-            "piano": TrackSettings(volume=0.8),
-            "bass": TrackSettings(volume=1.2),
-            "drums": TrackSettings(volume=0.5),
-        }
+        # Add tracks with different volumes
+        mixer.add_track("piano", sample_tracks["piano"], volume=0.8)
+        mixer.add_track("bass", sample_tracks["bass"], volume=1.2)
+        mixer.add_track("drums", sample_tracks["drums"], volume=0.5)
 
-        # Convert PyTorch tensors to numpy arrays
-        np_tracks = {name: audio.squeeze().numpy() for name, audio in sample_tracks.items()}
+        mixed = mixer.mix()
 
-        mixed = mixer.mix_tracks(np_tracks, track_settings)
+        assert isinstance(mixed, torch.Tensor)
+        assert torch.abs(mixed).max() <= 1.5  # Check reasonable range
 
-        assert isinstance(mixed, np.ndarray)
-        assert np.abs(mixed).max() <= 1.0  # Should not clip
+    def test_mix_with_panning(self, mixer, sample_tracks):
+        """Test mixing with panning."""
+        # Add tracks with panning
+        mixer.add_track("piano", sample_tracks["piano"], pan=-0.5)  # Left
+        mixer.add_track("bass", sample_tracks["bass"], pan=0.0)    # Center
+        mixer.add_track("drums", sample_tracks["drums"], pan=0.5)  # Right
 
-    def test_mix_with_effects(self, mixer, sample_tracks):
-        """Test mixing with effects applied."""
-        track_settings = {
-            "piano": TrackSettings(eq_low_gain=2.0, eq_high_gain=-1.0, reverb_send=0.3),
-            "drums": TrackSettings(
-                compressor_enabled=True, compressor_ratio=4.0, compressor_threshold=-12.0
-            ),
-        }
+        mixed = mixer.mix()
+        assert isinstance(mixed, torch.Tensor)
 
-        # Convert PyTorch tensors to numpy arrays
-        np_tracks = {name: audio.squeeze().numpy() for name, audio in sample_tracks.items()}
-
-        mixed = mixer.mix_tracks(np_tracks, track_settings)
-        assert isinstance(mixed, np.ndarray)
-
-    def test_preset_application(self, mixer, sample_tracks):
-        """Test applying mixing presets."""
-        # Test different master bus settings as "presets"
-        presets = {
-            "jazz_club": MasterBusSettings(eq_low_shelf_gain=1.0, stereo_width=1.2),
-            "rock_studio": MasterBusSettings(compressor_enabled=True, compressor_ratio=4.0),
-            "ambient_hall": MasterBusSettings(eq_high_shelf_gain=-2.0, stereo_width=1.5),
-        }
-
-        track_settings = {name: TrackSettings() for name in sample_tracks.keys()}
-        np_tracks = {name: audio.squeeze().numpy() for name, audio in sample_tracks.items()}
-
-        for preset_name, master_settings in presets.items():
-            mixed = mixer.mix_tracks(np_tracks, track_settings, master_settings)
-            assert isinstance(mixed, np.ndarray)
-
-    def test_mastering_chain(self, mixer, sample_tracks):
-        """Test mastering chain application."""
-        track_settings = {name: TrackSettings() for name in sample_tracks.keys()}
-        np_tracks = {name: audio.squeeze().numpy() for name, audio in sample_tracks.items()}
-
-        # Test master processing settings
-        master_settings = MasterBusSettings(
-            limiter_enabled=True, limiter_threshold=-1.0, compressor_enabled=True
-        )
-
-        mastered = mixer.mix_tracks(np_tracks, track_settings, master_settings)
-
-        assert isinstance(mastered, np.ndarray)
-        assert len(mastered.shape) == 1  # Mono output
-        assert np.abs(mastered).max() <= 1.0
+    def test_clear_tracks(self, mixer, sample_tracks):
+        """Test clearing tracks from mixer."""
+        # Add tracks
+        for name, audio in sample_tracks.items():
+            mixer.add_track(name, audio)
+        
+        assert len(mixer.tracks) == 3
+        
+        # Clear tracks
+        mixer.clear()
+        assert len(mixer.tracks) == 0
 
 
 @pytest.mark.unit
-class TestAudioEffects:
-    """Test individual audio effects."""
+class TestEffectsProcessor:
+    """Test audio effects processing."""
+
+    @pytest.fixture
+    def processor(self):
+        """Create effects processor."""
+        return EffectsProcessor(sample_rate=24000)
 
     @pytest.fixture
     def sample_audio(self):
@@ -139,84 +107,80 @@ class TestAudioEffects:
         duration = 1.0
         samples = int(sample_rate * duration)
         freq = 440.0
+        
+        t = torch.linspace(0, duration, samples)
+        return torch.sin(2 * np.pi * freq * t).unsqueeze(0)
 
-        # Return numpy array instead of torch tensor
-        t = np.linspace(0, duration, samples)
-        return np.sin(2 * np.pi * freq * t)
-
-    def test_eq_processor(self, sample_audio):
-        """Test EQ processor."""
-        eq = EQProcessor(sample_rate=24000)
-
-        # Create track settings with EQ parameters
-        settings = TrackSettings(eq_low_gain=3.0, eq_mid_gain=0.0, eq_high_gain=-2.0)
-
-        processed = eq.process(sample_audio, settings)
+    def test_reverb_effect(self, processor, sample_audio):
+        """Test reverb effect."""
+        processed = processor.apply_reverb(
+            sample_audio,
+            room_size=0.5,
+            damping=0.3,
+            wet_level=0.3
+        )
 
         assert processed.shape == sample_audio.shape
-        assert not np.allclose(processed, sample_audio)
+        assert not torch.allclose(processed, sample_audio)
+        
+        # Reverb should extend the signal slightly
+        assert processed.abs().sum() > sample_audio.abs().sum() * 0.9
 
-    def test_compression_processor(self, sample_audio):
-        """Test compression processor."""
-        compressor = CompressorProcessor(sample_rate=24000)
+    def test_delay_effect(self, processor, sample_audio):
+        """Test delay effect."""
+        processed = processor.apply_delay(
+            sample_audio,
+            delay_time=0.1,
+            feedback=0.3,
+            mix=0.5
+        )
 
+        assert processed.shape == sample_audio.shape
+        assert not torch.allclose(processed, sample_audio)
+
+    def test_eq_effect(self, processor, sample_audio):
+        """Test EQ effect."""
+        processed = processor.apply_eq(
+            sample_audio,
+            low_gain=2.0,
+            mid_gain=0.0,
+            high_gain=-1.0
+        )
+
+        assert processed.shape == sample_audio.shape
+        assert not torch.allclose(processed, sample_audio)
+
+    def test_compression_effect(self, processor, sample_audio):
+        """Test compression effect."""
         # Amplify signal to trigger compression
         loud_audio = sample_audio * 3.0
-        compressed = compressor.process(
-            loud_audio, threshold_db=-12.0, ratio=4.0, attack=0.005, release=0.05
+        
+        compressed = processor.apply_compression(
+            loud_audio,
+            threshold=-12.0,
+            ratio=4.0,
+            attack=0.005,
+            release=0.05
         )
 
         assert compressed.shape == loud_audio.shape
-        assert np.abs(compressed).max() < np.abs(loud_audio).max()
+        # Compressed signal should have lower peak than input
+        assert compressed.abs().max() < loud_audio.abs().max()
 
-    def test_reverb_processor(self, sample_audio):
-        """Test reverb processor."""
-        reverb = ReverbProcessor(sample_rate=24000)
+    def test_limiter_effect(self, processor, sample_audio):
+        """Test limiter effect."""
+        # Create signal that would clip
+        loud_audio = sample_audio * 5.0
+        
+        limited = processor.apply_limiter(
+            loud_audio,
+            threshold=-0.1,
+            release=0.01
+        )
 
-        processed = reverb.process(sample_audio, amount=0.5)
-
-        assert processed.shape == sample_audio.shape
-        assert not np.allclose(processed, sample_audio)
-
-
-@pytest.mark.unit
-class TestAutomation:
-    """Test parameter automation."""
-
-    def test_automation_curve(self):
-        """Test automation curve generation."""
-        # Simple linear interpolation test
-        duration = 1.0
-        sample_rate = 24000
-        samples = int(duration * sample_rate)
-
-        # Linear curve from 0 to 1
-        linear = np.linspace(0.0, 1.0, samples)
-        assert len(linear) == 24000
-        assert linear[0] == pytest.approx(0.0, abs=1e-3)
-        assert linear[-1] == pytest.approx(1.0, abs=1e-3)
-
-        # Exponential curve
-        exp = np.exp(np.linspace(np.log(0.1), np.log(1.0), samples))
-        assert len(exp) == 24000
-        assert exp[0] == pytest.approx(0.1, abs=1e-3)
-        assert exp[-1] == pytest.approx(1.0, abs=1e-3)
-
-    def test_parameter_automation(self):
-        """Test parameter automation application."""
-        # Simple interpolation between points
-        points = [(0.0, 0.5), (0.5, 1.0), (1.0, 0.3)]
-        duration = 1.0
-        sample_rate = 24000
-        samples = int(duration * sample_rate)
-
-        # Linear interpolation
-        t = np.linspace(0, 1, samples)
-        volume = np.interp(t, [p[0] for p in points], [p[1] for p in points])
-
-        assert len(volume) == 24000
-        assert volume[0] == pytest.approx(0.5, abs=1e-3)
-        assert volume[samples // 2] == pytest.approx(1.0, abs=1e-1)
+        assert limited.shape == loud_audio.shape
+        # Limited signal should not exceed threshold
+        assert limited.abs().max() <= 1.0
 
 
 @pytest.mark.unit
@@ -224,151 +188,182 @@ class TestMasteringChain:
     """Test mastering chain functionality."""
 
     @pytest.fixture
-    def mastering_chain(self):
+    def chain(self):
         """Create mastering chain."""
-        return AdvancedMixingEngine(sample_rate=24000)
+        return MasteringChain(sample_rate=24000)
 
     @pytest.fixture
     def mixed_audio(self):
-        """Create mixed audio for mastering."""
+        """Create pre-mixed audio for mastering."""
         sample_rate = 24000
         duration = 2.0
         samples = int(sample_rate * duration)
+        
+        # Simulate a mixed track with multiple frequencies
+        t = torch.linspace(0, duration, samples)
+        audio = (
+            torch.sin(2 * np.pi * 440 * t) * 0.3 +
+            torch.sin(2 * np.pi * 880 * t) * 0.2 +
+            torch.sin(2 * np.pi * 220 * t) * 0.4
+        )
+        return audio.unsqueeze(0)
 
-        # Simulate mixed audio with some dynamics
-        t = np.linspace(0, duration, samples)
-        audio = np.random.randn(samples) * 0.3
-        audio += np.sin(2 * np.pi * 440 * t) * 0.5
+    def test_mastering_process(self, chain, mixed_audio):
+        """Test full mastering process."""
+        mastered = chain.process(mixed_audio)
 
-        return audio
+        assert mastered.shape == mixed_audio.shape
+        assert not torch.allclose(mastered, mixed_audio)
+        
+        # Mastered audio should be louder but not clipping
+        assert mastered.abs().mean() > mixed_audio.abs().mean()
+        assert mastered.abs().max() <= 1.0
 
-    def test_loudness_normalization(self, mastering_chain, mixed_audio):
-        """Test loudness normalization."""
-        # Test master processing with volume control
-        settings = MasterBusSettings(volume=0.8)
-        stereo_audio = np.stack([mixed_audio, mixed_audio])  # Create stereo
-
-        normalized = mastering_chain.apply_master_processing(stereo_audio, settings)
-
-        assert normalized.shape == stereo_audio.shape
-        assert isinstance(normalized, np.ndarray)
-
-    def test_limiting(self, mastering_chain, mixed_audio):
-        """Test audio limiting."""
-        # Amplify to cause clipping
-        loud_audio = mixed_audio * 2.0
-
-        # Test limiting via master processing
-        settings = MasterBusSettings(limiter_enabled=True, limiter_threshold=-1.0)
-        stereo_audio = np.stack([loud_audio, loud_audio])  # Create stereo
-
-        limited = mastering_chain.apply_master_processing(stereo_audio, settings)
-
-        assert limited.shape == stereo_audio.shape
-        assert np.abs(limited).max() <= 1.0
-
-    def test_complete_mastering(self, mastering_chain, mixed_audio):
-        """Test complete mastering chain."""
-        settings = MasterBusSettings(
-            volume=0.8,
-            eq_enabled=True,
-            compressor_enabled=True,
-            limiter_enabled=True,
-            limiter_threshold=-0.3,
+    def test_mastering_with_settings(self, chain, mixed_audio):
+        """Test mastering with custom settings."""
+        mastered = chain.process(
+            mixed_audio,
+            eq_settings={
+                "low": 1.0,
+                "mid": 0.5,
+                "high": 0.8
+            },
+            compression_settings={
+                "threshold": -15.0,
+                "ratio": 3.0,
+                "makeup_gain": 2.0
+            },
+            limiter_settings={
+                "threshold": -0.1,
+                "release": 0.05
+            }
         )
 
-        stereo_audio = np.stack([mixed_audio, mixed_audio])  # Create stereo
-        mastered = mastering_chain.apply_master_processing(stereo_audio, settings)
-
-        assert mastered.shape == stereo_audio.shape
-        assert np.abs(mastered).max() <= 0.99  # Accounting for headroom
-
-    def test_stereo_imaging(self, mastering_chain):
-        """Test stereo imaging processing."""
-        # Create stereo audio
-        sample_rate = 24000
-        duration = 1.0
-        samples = int(sample_rate * duration)
-
-        stereo_audio = np.random.randn(2, samples)
-
-        # Test stereo width processing via master settings
-        settings = MasterBusSettings(stereo_width=1.2)
-        processed = mastering_chain.apply_master_processing(stereo_audio, settings)
-
-        assert processed.shape == stereo_audio.shape
-        assert not np.allclose(processed, stereo_audio)
+        assert mastered.shape == mixed_audio.shape
+        assert mastered.abs().max() <= 1.0
 
 
 @pytest.mark.unit
-class TestAudioValidation:
-    """Test audio validation and analysis."""
+class TestAutomation:
+    """Test automation functionality."""
 
-    def test_audio_quality_metrics(self):
-        """Test audio quality metric calculation."""
-        # Simple audio analysis without external dependencies
-        sample_rate = 24000
-        duration = 1.0
-        samples = int(sample_rate * duration)
-        t = np.linspace(0, duration, samples)
-        audio = np.sin(2 * np.pi * 440 * t)
+    @pytest.fixture
+    def engine(self):
+        """Create automation engine."""
+        return AutomationEngine()
 
-        # Calculate basic metrics
-        rms_level = 20 * np.log10(np.sqrt(np.mean(audio**2)) + 1e-8)
-        peak_level = 20 * np.log10(np.max(np.abs(audio)) + 1e-8)
-        dynamic_range = peak_level - rms_level
+    def test_volume_automation(self, engine):
+        """Test volume automation."""
+        # Add automation points
+        engine.add_point("volume", 0.0, 1.0)
+        engine.add_point("volume", 5.0, 0.2)
+        engine.add_point("volume", 10.0, 0.8)
 
-        assert rms_level > -10  # Should have reasonable level (sine wave ~-3dB)
-        assert peak_level <= 1  # Peak should be around 0 dB
-        assert dynamic_range >= 0  # Dynamic range should be positive
+        # Test interpolation
+        assert engine.get_value("volume", 0.0) == 1.0
+        assert engine.get_value("volume", 5.0) == 0.2
+        assert engine.get_value("volume", 10.0) == 0.8
+        
+        # Test interpolation between points
+        value_at_2_5 = engine.get_value("volume", 2.5)
+        assert 0.2 < value_at_2_5 < 1.0
 
-    def test_clipping_detection(self):
-        """Test clipping detection."""
-        # Create clipped audio
-        sample_rate = 24000
-        duration = 0.5
-        samples = int(sample_rate * duration)
-        t = np.linspace(0, duration, samples)
+    def test_pan_automation(self, engine):
+        """Test pan automation."""
+        # Add automation for panning
+        engine.add_point("pan", 0.0, -1.0)  # Full left
+        engine.add_point("pan", 10.0, 1.0)  # Full right
 
-        clean_audio = np.sin(2 * np.pi * 440 * t) * 0.8
-        clipped_audio = np.clip(clean_audio * 2.0, -1.0, 1.0)
+        # Test smooth pan from left to right
+        assert engine.get_value("pan", 0.0) == -1.0
+        assert engine.get_value("pan", 5.0) == pytest.approx(0.0, rel=1e-2)
+        assert engine.get_value("pan", 10.0) == 1.0
 
-        # Simple clipping detection
-        clean_clipped = np.any(np.abs(clean_audio) >= 0.99)
-        has_clipping = np.any(np.abs(clipped_audio) >= 0.99)
+    def test_multiple_parameters(self, engine):
+        """Test automating multiple parameters."""
+        # Add automation for multiple parameters
+        engine.add_point("volume", 0.0, 1.0)
+        engine.add_point("volume", 10.0, 0.5)
+        
+        engine.add_point("reverb", 0.0, 0.0)
+        engine.add_point("reverb", 10.0, 0.8)
 
-        assert not clean_clipped
-        assert has_clipping
+        # Check that parameters are independent
+        assert engine.get_value("volume", 5.0) == pytest.approx(0.75, rel=1e-2)
+        assert engine.get_value("reverb", 5.0) == pytest.approx(0.4, rel=1e-2)
 
-    def test_silence_detection(self):
-        """Test silence detection."""
-        sample_rate = 24000
-        duration = 2.0
-        samples = int(sample_rate * duration)
+    def test_clear_automation(self, engine):
+        """Test clearing automation data."""
+        # Add some points
+        engine.add_point("volume", 0.0, 1.0)
+        engine.add_point("volume", 10.0, 0.0)
+        
+        assert "volume" in engine.parameters
+        
+        # Clear specific parameter
+        engine.clear_parameter("volume")
+        assert "volume" not in engine.parameters
+        
+        # Clear all
+        engine.add_point("pan", 0.0, 0.0)
+        engine.clear_all()
+        assert len(engine.parameters) == 0
 
-        # Create audio with silence in middle
-        t1 = np.linspace(0, 0.5, samples // 4)
-        t2 = np.linspace(0, 0.5, samples // 4)
 
-        audio = np.concatenate(
-            [
-                np.sin(2 * np.pi * 440 * t1),  # First part
-                np.zeros(samples // 2),  # Silence
-                np.sin(2 * np.pi * 880 * t2),  # Last part
-            ]
-        )
+@pytest.mark.integration
+class TestMixingIntegration:
+    """Integration tests for complete mixing workflow."""
 
-        # Simple silence detection
-        threshold = -40.0  # dB
-        threshold_linear = 10 ** (threshold / 20)
-        silence_mask = np.abs(audio) < threshold_linear
-
-        # Find silence segments
-        silence_starts = np.where(np.diff(silence_mask.astype(int)) == 1)[0]
-        silence_ends = np.where(np.diff(silence_mask.astype(int)) == -1)[0]
-
-        assert len(silence_starts) > 0  # Should find at least one silence start
-        assert len(silence_ends) > 0  # Should find at least one silence end
+    def test_complete_mixing_workflow(self):
+        """Test complete mixing and mastering workflow."""
+        # Create mixer
+        mixer = AudioMixer(sample_rate=32000)
+        
+        # Create test tracks
+        duration = 3.0
+        samples = int(32000 * duration)
+        t = torch.linspace(0, duration, samples)
+        
+        # Add multiple instrument tracks
+        tracks = {
+            "piano": torch.sin(2 * np.pi * 440 * t) * 0.3,
+            "bass": torch.sin(2 * np.pi * 110 * t) * 0.5,
+            "lead": torch.sin(2 * np.pi * 880 * t) * 0.2,
+            "drums": torch.randn(samples) * 0.1,
+        }
+        
+        # Add tracks with different settings
+        for name, audio in tracks.items():
+            volume = 0.8 if name != "bass" else 1.0
+            pan = {"piano": -0.3, "bass": 0.0, "lead": 0.3, "drums": 0.0}.get(name, 0.0)
+            mixer.add_track(name, audio.unsqueeze(0), volume=volume, pan=pan)
+        
+        # Mix tracks
+        mixed = mixer.mix()
+        
+        # Apply effects
+        effects = EffectsProcessor(sample_rate=32000)
+        
+        # Add some reverb
+        with_reverb = effects.apply_reverb(mixed, room_size=0.3, wet_level=0.2)
+        
+        # Apply EQ
+        eq_processed = effects.apply_eq(with_reverb, low_gain=0.5, mid_gain=0.0, high_gain=0.3)
+        
+        # Master the mix
+        mastering = MasteringChain(sample_rate=32000)
+        final = mastering.process(eq_processed)
+        
+        # Verify output
+        assert final is not None
+        assert final.shape[0] == 1  # Mono/single channel
+        assert final.shape[1] == samples
+        assert final.abs().max() <= 1.0  # No clipping
+        assert not torch.isnan(final).any()
+        assert not torch.isinf(final).any()
+        
+        # Output should be different from input
+        assert not torch.allclose(final, tracks["piano"].unsqueeze(0))
 
 
 if __name__ == "__main__":

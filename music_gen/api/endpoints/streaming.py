@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from ...streaming import SessionManager
-from ...streaming.generator import StreamConfig
+from ...streaming.generator import StreamingConfig
 
 router = APIRouter()
 
@@ -62,10 +62,9 @@ async def create_streaming_session(request: StreamingRequest):
     session_id = str(uuid.uuid4())
 
     # Configure streaming
-    config = StreamConfig(
+    config = StreamingConfig(
         chunk_duration=request.chunk_duration,
         temperature=request.temperature,
-        guidance_scale=request.guidance_scale,
     )
 
     # Create session
