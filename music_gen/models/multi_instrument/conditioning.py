@@ -152,7 +152,7 @@ class InstrumentConditioner(nn.Module):
         if config.use_instrument_attention:
             self.instrument_attention = nn.MultiheadAttention(
                 config.hidden_size,
-                config.num_attention_heads,
+                config.num_heads,
                 dropout=config.attention_dropout,
                 batch_first=True,
             )
@@ -163,7 +163,7 @@ class InstrumentConditioner(nn.Module):
         )
 
         self.layer_norm = nn.LayerNorm(config.hidden_size)
-        self.dropout = nn.Dropout(config.dropout)
+        self.dropout = nn.Dropout(config.hidden_dropout)
 
     def forward(
         self,
