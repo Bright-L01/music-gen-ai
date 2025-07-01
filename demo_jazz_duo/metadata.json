@@ -1,0 +1,17 @@
+{
+  "duration": 5.0,
+  "sample_rate": 32000,
+  "instruments": [
+    "piano",
+    "saxophone"
+  ],
+  "generation_times": {
+    "piano": 40.37424898147583,
+    "saxophone": 36.67711687088013
+  },
+  "prompts_used": {
+    "piano": "smooth jazz piano relaxed evening",
+    "saxophone": "smooth jazz saxophone relaxed evening"
+  },
+  "total_generation_time": 77.05136585235596
+}

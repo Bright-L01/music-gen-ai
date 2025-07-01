@@ -1,0 +1,951 @@
+{
+  "timestamp": "2025-06-30T22:31:04.166352",
+  "actions": [
+    {
+      "action": "Removed: tests/test_mixing_engine.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/conftest.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_augmentation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_multi_instrument.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_basic.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_beam_search.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_complete_system.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/test_streaming.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/cli.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/train.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/evaluate.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/test_with_fixed_dimensions.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/quick_fix_and_test.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/cleanup_project.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/verify_core_functionality.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/reorganize_to_production.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/profile_performance.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/download_models.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/test_generation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_streaming_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_datasets.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test___init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_encoders.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_audio_streamer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_session.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_augmentation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_metrics.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_model.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_mastering.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_conditioning.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_config.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_audio_mixing.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_audio_tokenizer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_multi_instrument_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_base.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_utils.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_audio_utils.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_models.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_effects.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_main.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_advanced_mixing.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_data.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_real_multi_instrument.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_generator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_logging.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_musicgen.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_checkpointing.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_fast_generator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_hybrid_separator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_mixer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_cli.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_model_cache.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_real_musicgen_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_lightning_module.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_exceptions.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_generation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/test_automation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/test_training_pipeline.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/test_full_pipeline.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/test_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/robust_musicgen_test.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/comprehensive_musicgen_test.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/batch_musicgen_test.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/performance/musicgen_performance_test.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/e2e/test_complete_pipeline.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/web/app.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/web/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/optimization/fast_generator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/optimization/model_cache.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/optimization/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/training/hydra_trainer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/training/lightning_module.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/training/checkpointing.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/training/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/utils/exceptions.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/utils/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/utils/audio.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/utils/logging.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/musicgen.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/encoders.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/utils.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/session.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/generator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/audio_streamer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/advanced_mixing.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/configs/config.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/configs/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/real_musicgen_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/streaming_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/multi_instrument_api.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/main.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/real_multi_instrument.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/integrated_music_system.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/evaluation/metrics.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/evaluation/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/data/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/data/datasets.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/data/augmentation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/generation/beam_search.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/generation/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/transformer/model.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/transformer/config.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/transformer/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/conditioning.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/model.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/generator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/config.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/encodec/audio_tokenizer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/encodec/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/automation.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/mastering.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/mixer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/effects.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/demucs_separator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/base.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/hybrid_separator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/spleeter_separator.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/export/midi/quantizer.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/export/midi/transcriber.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/export/midi/converter.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/export/midi/__init__.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/testing/fix_imports.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/testing/coverage_report.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/testing/build_test_suite.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/testing/ensure_ci_passes.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/testing/check_basic_issues.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/maintenance/analyze_and_cleanup.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/performance/analyze_test_coverage.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/validation/verify_audio_files.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: scripts/validation/check_system.py.bak",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed directory: archive_20250629_112344",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: __pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/unit/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/integration/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/performance/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: tests/e2e/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/web/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/optimization/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/training/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/utils/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/streaming/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/configs/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/api/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/evaluation/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/data/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/generation/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/transformer/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/multi_instrument/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/models/encodec/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/mixing/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/separation/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/export/midi/__pycache__",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/integrated_music_system.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/inference/real_multi_instrument.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed: music_gen/audio/advanced_mixing.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created directory: music_gen/api/endpoints",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/endpoints/generation.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/endpoints/streaming.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/endpoints/health.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/endpoints/models.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created directory: music_gen/api/middleware",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/middleware/__init__.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/middleware/auth.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/middleware/cors.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created directory: music_gen/api/schemas",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/schemas/__init__.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/schemas/requests.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created: music_gen/api/schemas/responses.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Updated main __init__.py",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Fixed import sorting with isort",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Removed unused imports with autoflake",
+      "details": "",
+      "dry_run": false
+    },
+    {
+      "action": "Created .pre-commit-config.yaml",
+      "details": "",
+      "dry_run": false
+    }
+  ],
+  "errors": [],
+  "statistics": {
+    "backup_files_removed": 139,
+    "archive_dirs_removed": 1,
+    "pycache_dirs_removed": 26,
+    "experimental_files_removed": 3
+  },
+  "summary": {
+    "total_actions": 186,
+    "total_errors": 0,
+    "dry_run": false,
+    "backup_files_removed": 139,
+    "archive_dirs_removed": 1,
+    "pycache_dirs_removed": 26,
+    "experimental_files_removed": 3
+  }
+}

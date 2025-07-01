@@ -1,3 +1,0 @@
-"""
-Generation service source modules
-"""

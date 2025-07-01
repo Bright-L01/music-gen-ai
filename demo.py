@@ -7,21 +7,16 @@ Provides easy user experience for testing all features.
 """
 
 import asyncio
-import json
-import os
-import sys
 import time
-from typing import Optional, Dict, Any
+from typing import Dict, Optional
 
 import click
 import httpx
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm, Prompt
 from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich.syntax import Syntax
-
 
 console = Console()
 
@@ -255,13 +250,15 @@ async def setup(ctx):
     async with MusicGenClient(api_url) as client:
         console.print("\n[bold]Checking system health...[/bold]")
         
-        # Check API gateway
-        with console.status("Checking API Gateway..."):
+        # Check API
+        with console.status("Checking API..."):
             if await client.health_check():
-                console.print("✅ API Gateway is healthy")
+                console.print("✅ API is healthy")
             else:
-                console.print("❌ API Gateway is not responding")
-                console.print(f"Make sure the system is running: docker-compose -f docker-compose.microservices.yml up")
+                console.print("❌ API is not responding")
+                console.print("Make sure the system is running:")
+                console.print("  • For Docker: docker-compose up")
+                console.print("  • For local: uvicorn music_gen.api.main:app --reload")
                 return
                 
         # Check all services
@@ -396,7 +393,7 @@ async def demo(ctx):
             
             if result["status"] == "completed":
                 audio_url = result.get("audio_url", "")
-                console.print(f"\n🎉 Music generated successfully!")
+                console.print("\n🎉 Music generated successfully!")
                 console.print(f"Audio URL: {audio_url}")
                 console.print(f"Duration: {result.get('duration_generated', duration)}s")
                 

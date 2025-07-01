@@ -1,17 +1,19 @@
 """
 Main MusicGen model combining text encoding, conditioning, and transformer generation.
 """
+
+import logging
+from typing import Dict, List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Dict, Any, List, Tuple, Union
-import logging
 
-from .transformer.model import MusicGenTransformer
-from .transformer.config import MusicGenConfig, TransformerConfig
-from .encoders import MultiModalEncoder
-from .encodec.audio_tokenizer import EnCodecTokenizer
 from ..generation.beam_search import BeamSearchConfig, beam_search_generate
+from .encodec.audio_tokenizer import EnCodecTokenizer
+from .encoders import MultiModalEncoder
+from .transformer.config import MusicGenConfig
+from .transformer.model import MusicGenTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -19,31 +21,31 @@ logger = logging.getLogger(__name__)
 class MusicGenModel(nn.Module):
     """
     Complete MusicGen model for text-to-music generation.
-    
+
     This model combines:
     - T5 text encoder for understanding text prompts
     - Conditioning encoder for musical attributes (genre, mood, tempo)
     - Transformer decoder with cross-attention for music generation
     - EnCodec tokenizer for audio representation
     """
-    
+
     def __init__(self, config: MusicGenConfig):
         super().__init__()
         self.config = config
-        
+
         # Initialize components
         self._init_encoders()
         self._init_transformer()
         self._init_audio_tokenizer()
-        
+
         # Special tokens
         self.pad_token_id = config.transformer.pad_token_id
         self.bos_token_id = config.transformer.bos_token_id
         self.eos_token_id = config.transformer.eos_token_id
-        
+
         # Generation parameters
         self.generation_config = config.default_generation_params
-        
+
     def _init_encoders(self):
         """Initialize text and conditioning encoders."""
         conditioning_config = {
@@ -63,7 +65,7 @@ class MusicGenModel(nn.Module):
             "use_instruments": self.config.conditioning.use_instruments,
             "fusion_method": self.config.conditioning.conditioning_fusion,
         }
-        
+
         self.multimodal_encoder = MultiModalEncoder(
             t5_model_name=self.config.t5.model_name,
             freeze_t5=self.config.t5.freeze_encoder,
@@ -71,11 +73,11 @@ class MusicGenModel(nn.Module):
             conditioning_config=conditioning_config,
             output_projection_dim=self.config.transformer.hidden_size,
         )
-    
+
     def _init_transformer(self):
         """Initialize the main transformer model."""
         self.transformer = MusicGenTransformer(self.config.transformer)
-    
+
     def _init_audio_tokenizer(self):
         """Initialize the audio tokenizer."""
         self.audio_tokenizer = EnCodecTokenizer(
@@ -84,11 +86,11 @@ class MusicGenModel(nn.Module):
             bandwidth=self.config.encodec.bandwidth,
             normalize=self.config.encodec.normalize,
         )
-        
+
         # Update transformer vocab size to match audio tokenizer
-        if hasattr(self.audio_tokenizer, 'codebook_size'):
+        if hasattr(self.audio_tokenizer, "codebook_size"):
             self.config.transformer.vocab_size = self.audio_tokenizer.codebook_size
-    
+
     def encode_audio(
         self,
         audio: torch.Tensor,
@@ -98,7 +100,7 @@ class MusicGenModel(nn.Module):
         with torch.no_grad():
             tokens = self.audio_tokenizer.tokenize(audio, sample_rate)
         return tokens
-    
+
     def decode_audio(
         self,
         tokens: torch.Tensor,
@@ -110,10 +112,10 @@ class MusicGenModel(nn.Module):
                 # Infer time frames from sequence length
                 seq_len = tokens.shape[-1]
                 time_frames = seq_len // self.audio_tokenizer.num_quantizers
-            
+
             audio = self.audio_tokenizer.detokenize(tokens, time_frames)
         return audio
-    
+
     def prepare_inputs(
         self,
         texts: List[str],
@@ -125,7 +127,7 @@ class MusicGenModel(nn.Module):
         instrument_ids: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """Prepare and encode inputs for the model."""
-        
+
         # Encode multimodal inputs
         encoder_outputs = self.multimodal_encoder(
             texts=texts,
@@ -136,9 +138,9 @@ class MusicGenModel(nn.Module):
             duration=duration,
             instrument_ids=instrument_ids,
         )
-        
+
         return encoder_outputs
-    
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -156,15 +158,15 @@ class MusicGenModel(nn.Module):
         return_dict: bool = True,
     ) -> Union[Dict[str, torch.Tensor], Tuple]:
         """Forward pass of the complete model."""
-        
+
         device = input_ids.device
-        batch_size = input_ids.shape[0]
-        
+        input_ids.shape[0]
+
         # Prepare encoder inputs if texts are provided
         encoder_hidden_states = None
         encoder_attention_mask = None
         conditioning_embeddings = None
-        
+
         if texts is not None:
             encoder_outputs = self.prepare_inputs(
                 texts=texts,
@@ -175,11 +177,11 @@ class MusicGenModel(nn.Module):
                 duration=duration,
                 instrument_ids=instrument_ids,
             )
-            
+
             encoder_hidden_states = encoder_outputs["text_hidden_states"]
             encoder_attention_mask = encoder_outputs["text_attention_mask"]
             conditioning_embeddings = encoder_outputs["conditioning_embeddings"]
-        
+
         # Forward through transformer
         transformer_outputs = self.transformer(
             input_ids=input_ids,
@@ -191,29 +193,26 @@ class MusicGenModel(nn.Module):
             use_cache=use_cache,
             output_hidden_states=output_hidden_states,
         )
-        
+
         logits = transformer_outputs["logits"]
-        
+
         # Calculate loss if labels are provided
         loss = None
         if labels is not None:
             # Shift labels for causal LM
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
-            
+
             # Calculate cross-entropy loss
             loss_fct = nn.CrossEntropyLoss(ignore_index=self.pad_token_id)
-            loss = loss_fct(
-                shift_logits.view(-1, shift_logits.size(-1)),
-                shift_labels.view(-1)
-            )
-        
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
         if not return_dict:
             output = (logits,) + tuple(transformer_outputs.values())[1:]
             if loss is not None:
                 output = (loss,) + output
             return output
-        
+
         return {
             "loss": loss,
             "logits": logits,
@@ -221,7 +220,7 @@ class MusicGenModel(nn.Module):
             "hidden_states": transformer_outputs.get("hidden_states"),
             "all_hidden_states": transformer_outputs.get("all_hidden_states"),
         }
-    
+
     @torch.no_grad()
     def generate(
         self,
@@ -244,7 +243,7 @@ class MusicGenModel(nn.Module):
     ) -> torch.Tensor:
         """
         Generate music tokens from text prompts.
-        
+
         Args:
             texts: List of text prompts
             max_length: Maximum generation length
@@ -262,21 +261,21 @@ class MusicGenModel(nn.Module):
             pad_token_id: Padding token ID
             eos_token_id: End-of-sequence token ID
             device: Device to run generation on
-            
+
         Returns:
             Generated token sequences
         """
-        
+
         if device is None:
             device = next(self.parameters()).device
-        
+
         if pad_token_id is None:
             pad_token_id = self.pad_token_id
         if eos_token_id is None:
             eos_token_id = self.eos_token_id
-        
+
         batch_size = len(texts)
-        
+
         # Prepare encoder inputs
         encoder_outputs = self.prepare_inputs(
             texts=texts,
@@ -287,19 +286,14 @@ class MusicGenModel(nn.Module):
             duration=duration,
             instrument_ids=instrument_ids,
         )
-        
+
         encoder_hidden_states = encoder_outputs["text_hidden_states"]
         encoder_attention_mask = encoder_outputs["text_attention_mask"]
         conditioning_embeddings = encoder_outputs["conditioning_embeddings"]
-        
+
         # Initialize generation with BOS token
-        input_ids = torch.full(
-            (batch_size, 1),
-            self.bos_token_id,
-            dtype=torch.long,
-            device=device
-        )
-        
+        input_ids = torch.full((batch_size, 1), self.bos_token_id, dtype=torch.long, device=device)
+
         # Use beam search if num_beams > 1
         if num_beams > 1:
             return self._beam_search_generate(
@@ -316,11 +310,11 @@ class MusicGenModel(nn.Module):
                 pad_token_id=pad_token_id,
                 eos_token_id=eos_token_id,
             )
-        
+
         # Generation loop for greedy/sampling
         past_key_values = None
         finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
-        
+
         for step in range(max_length - 1):
             # Forward pass
             outputs = self.transformer(
@@ -331,10 +325,10 @@ class MusicGenModel(nn.Module):
                 past_key_values=past_key_values,
                 use_cache=True,
             )
-            
+
             logits = outputs["logits"][:, -1, :]  # Get last token logits
             past_key_values = outputs["past_key_values"]
-            
+
             # Apply repetition penalty
             if repetition_penalty != 1.0:
                 for i in range(batch_size):
@@ -343,82 +337,79 @@ class MusicGenModel(nn.Module):
                             logits[i, previous_token] *= repetition_penalty
                         else:
                             logits[i, previous_token] /= repetition_penalty
-            
+
             # Apply temperature
             if temperature != 1.0:
                 logits = logits / temperature
-            
+
             # Sampling
             if do_sample:
                 # Top-k filtering
                 if top_k > 0:
                     top_k_logits, top_k_indices = torch.topk(logits, top_k, dim=-1)
-                    logits_filtered = torch.full_like(logits, float('-inf'))
+                    logits_filtered = torch.full_like(logits, float("-inf"))
                     logits_filtered.scatter_(-1, top_k_indices, top_k_logits)
                     logits = logits_filtered
-                
+
                 # Top-p (nucleus) filtering
                 if top_p < 1.0:
                     sorted_logits, sorted_indices = torch.sort(logits, descending=True, dim=-1)
                     cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-                    
+
                     # Remove tokens with cumulative probability above threshold
                     sorted_indices_to_remove = cumulative_probs > top_p
                     sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
                     sorted_indices_to_remove[..., 0] = 0
-                    
+
                     for i in range(batch_size):
                         indices_to_remove = sorted_indices[i][sorted_indices_to_remove[i]]
-                        logits[i][indices_to_remove] = float('-inf')
-                
+                        logits[i][indices_to_remove] = float("-inf")
+
                 # Sample from distribution
                 probs = F.softmax(logits, dim=-1)
                 next_tokens = torch.multinomial(probs, num_samples=1)
             else:
                 # Greedy decoding
                 next_tokens = torch.argmax(logits, dim=-1, keepdim=True)
-            
+
             # Update sequences
             input_ids = torch.cat([input_ids, next_tokens], dim=-1)
-            
+
             # Check for EOS tokens
             finished = finished | (next_tokens.squeeze(-1) == eos_token_id)
             if finished.all():
                 break
-        
+
         return input_ids
-    
+
     @torch.no_grad()
     def generate_audio(
-        self,
-        texts: List[str],
-        duration: float = 10.0,
-        **generation_kwargs
+        self, texts: List[str], duration: float = 10.0, **generation_kwargs
     ) -> torch.Tensor:
         """
         Generate audio from text prompts.
-        
+
         Args:
             texts: Text prompts
             duration: Target duration in seconds
             **generation_kwargs: Additional generation parameters
-            
+
         Returns:
             Generated audio tensor
         """
-        
+
         # Calculate target sequence length
         target_length = self.audio_tokenizer.get_sequence_length(duration)
         generation_kwargs.setdefault("max_length", target_length)
-        
+
         # Generate tokens
         tokens = self.generate(texts, **generation_kwargs)
-        
+
         # Convert to audio
         audio = self.decode_audio(tokens)
-        
+
         return audio
-    
+
     def _beam_search_generate(
         self,
         input_ids: torch.Tensor,
@@ -436,10 +427,10 @@ class MusicGenModel(nn.Module):
         length_penalty: float = 1.0,
         diversity_penalty: float = 0.0,
         early_stopping: bool = True,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Generate using beam search."""
-        
+
         # Create beam search configuration
         beam_config = BeamSearchConfig(
             num_beams=num_beams,
@@ -455,7 +446,7 @@ class MusicGenModel(nn.Module):
             eos_token_id=eos_token_id,
             bos_token_id=self.bos_token_id,
         )
-        
+
         # Perform beam search
         generated_sequences, scores = beam_search_generate(
             model=self,
@@ -465,9 +456,9 @@ class MusicGenModel(nn.Module):
             encoder_attention_mask=encoder_attention_mask,
             conditioning_embeddings=conditioning_embeddings,
         )
-        
+
         return generated_sequences
-    
+
     @torch.no_grad()
     def generate_with_beam_search(
         self,
@@ -487,11 +478,11 @@ class MusicGenModel(nn.Module):
         duration: Optional[torch.Tensor] = None,
         instrument_ids: Optional[torch.Tensor] = None,
         device: Optional[torch.device] = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """
         Generate music tokens using beam search.
-        
+
         Args:
             texts: List of text prompts
             num_beams: Number of beams for beam search
@@ -504,22 +495,22 @@ class MusicGenModel(nn.Module):
             diversity_penalty: Diversity penalty for diverse beam search
             early_stopping: Whether to stop early when EOS is found
             genre_ids: Genre conditioning
-            mood_ids: Mood conditioning  
+            mood_ids: Mood conditioning
             tempo: Tempo conditioning
             duration: Duration conditioning
             instrument_ids: Instrument conditioning
             device: Device to run generation on
             **kwargs: Additional arguments
-            
+
         Returns:
             Generated token sequences
         """
-        
+
         if device is None:
             device = next(self.parameters()).device
-        
+
         batch_size = len(texts)
-        
+
         # Prepare encoder inputs
         encoder_outputs = self.prepare_inputs(
             texts=texts,
@@ -530,19 +521,14 @@ class MusicGenModel(nn.Module):
             duration=duration,
             instrument_ids=instrument_ids,
         )
-        
+
         encoder_hidden_states = encoder_outputs["text_hidden_states"]
         encoder_attention_mask = encoder_outputs["text_attention_mask"]
         conditioning_embeddings = encoder_outputs["conditioning_embeddings"]
-        
+
         # Initialize generation with BOS token
-        input_ids = torch.full(
-            (batch_size, 1),
-            self.bos_token_id,
-            dtype=torch.long,
-            device=device
-        )
-        
+        input_ids = torch.full((batch_size, 1), self.bos_token_id, dtype=torch.long, device=device)
+
         # Generate using beam search
         return self._beam_search_generate(
             input_ids=input_ids,
@@ -558,99 +544,88 @@ class MusicGenModel(nn.Module):
             length_penalty=length_penalty,
             diversity_penalty=diversity_penalty,
             early_stopping=early_stopping,
-            **kwargs
+            **kwargs,
         )
-    
+
     @torch.no_grad()
     def generate_audio_with_beam_search(
-        self,
-        texts: List[str],
-        duration: float = 10.0,
-        num_beams: int = 4,
-        **generation_kwargs
+        self, texts: List[str], duration: float = 10.0, num_beams: int = 4, **generation_kwargs
     ) -> torch.Tensor:
         """
         Generate audio from text prompts using beam search.
-        
+
         Args:
             texts: Text prompts
             duration: Target duration in seconds
             num_beams: Number of beams for beam search
             **generation_kwargs: Additional generation parameters
-            
+
         Returns:
             Generated audio tensor
         """
-        
+
         # Calculate target sequence length
         target_length = self.audio_tokenizer.get_sequence_length(duration)
         generation_kwargs.setdefault("max_length", target_length)
-        
+
         # Generate tokens using beam search
-        tokens = self.generate_with_beam_search(
-            texts, 
-            num_beams=num_beams,
-            **generation_kwargs
-        )
-        
+        tokens = self.generate_with_beam_search(texts, num_beams=num_beams, **generation_kwargs)
+
         # Convert to audio
         audio = self.decode_audio(tokens)
-        
+
         return audio
-    
+
     def save_pretrained(self, save_directory: str):
         """Save model weights and configuration."""
-        import os
         import json
-        
+        import os
+
         os.makedirs(save_directory, exist_ok=True)
-        
+
         # Save model weights
         torch.save(self.state_dict(), os.path.join(save_directory, "pytorch_model.bin"))
-        
+
         # Save configuration
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(self.config.__dict__, f, indent=2)
-    
+
     @classmethod
     def from_pretrained(cls, model_path: str, **kwargs):
         """Load model from saved weights and configuration."""
-        import os
         import json
-        
+        import os
+
         # Load configuration
         config_path = os.path.join(model_path, "config.json")
         with open(config_path, "r") as f:
             config_dict = json.load(f)
-        
+
         config = MusicGenConfig(**config_dict)
-        
+
         # Create model
         model = cls(config, **kwargs)
-        
+
         # Load weights
         weights_path = os.path.join(model_path, "pytorch_model.bin")
         state_dict = torch.load(weights_path, map_location="cpu")
         model.load_state_dict(state_dict)
-        
+
         return model
 
 
-def create_musicgen_model(
-    model_size: str = "base",
-    **config_overrides
-) -> MusicGenModel:
+def create_musicgen_model(model_size: str = "base", **config_overrides) -> MusicGenModel:
     """
     Factory function to create MusicGen model with predefined configurations.
-    
+
     Args:
         model_size: Model size ("small", "base", "large")
         **config_overrides: Configuration overrides
-        
+
     Returns:
         MusicGenModel instance
     """
-    
+
     if model_size == "small":
         base_config = {
             "transformer": {
@@ -680,9 +655,9 @@ def create_musicgen_model(
         }
     else:
         raise ValueError(f"Unknown model size: {model_size}")
-    
+
     # Merge with overrides
     config_dict = {**base_config, **config_overrides}
     config = MusicGenConfig(**config_dict)
-    
+
     return MusicGenModel(config)

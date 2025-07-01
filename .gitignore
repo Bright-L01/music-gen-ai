@@ -219,3 +219,48 @@ wandb/
 
 # Lightning logs
 lightning_logs/
+# Virtual environments
+demo_venv/
+venv/
+env/
+.env/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+
+# Cache directories
+cache/
+test_cache/
+.cache/
+
+# Output directories
+output/
+outputs/
+test_outputs/
+batch_outputs/
+quick_test_outputs/
+
+# Temporary files
+*.wav
+*.mp3
+*.log
+*.tmp
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Archive directories
+archive_*/
+.archive/

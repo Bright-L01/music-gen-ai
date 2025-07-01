@@ -1,6 +1,7 @@
 """
 Training script with Hydra configuration support.
 """
+
 import sys
 from pathlib import Path
 

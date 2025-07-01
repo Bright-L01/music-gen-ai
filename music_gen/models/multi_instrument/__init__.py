@@ -7,14 +7,14 @@ This module provides:
 - Track separation and mixing
 """
 
-from .config import MultiInstrumentConfig, InstrumentConfig
-from .model import MultiInstrumentMusicGen
 from .conditioning import InstrumentConditioner
+from .config import InstrumentConfig, MultiInstrumentConfig
 from .generator import MultiTrackGenerator
+from .model import MultiInstrumentMusicGen
 
 __all__ = [
     "MultiInstrumentConfig",
-    "InstrumentConfig", 
+    "InstrumentConfig",
     "MultiInstrumentMusicGen",
     "InstrumentConditioner",
     "MultiTrackGenerator",

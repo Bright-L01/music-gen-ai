@@ -2,14 +2,14 @@
 Real-time streaming generation for MusicGen.
 """
 
-from .generator import StreamingGenerator, StreamingConfig
-from .session import StreamingSession, SessionManager
-from .audio_streamer import AudioStreamer, AudioChunk
+from .audio_streamer import AudioChunk, AudioStreamer
+from .generator import StreamingConfig, StreamingGenerator
+from .session import SessionManager, StreamingSession
 from .utils import CrossfadeProcessor, StreamingBuffer
 
 __all__ = [
     "StreamingGenerator",
-    "StreamingConfig", 
+    "StreamingConfig",
     "StreamingSession",
     "SessionManager",
     "AudioStreamer",
