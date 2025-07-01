@@ -150,34 +150,46 @@ class TestLoggingSetup:
 class TestLoggingIntegration:
     """Test integrated logging scenarios."""
 
-    def test_json_formatter_logging(self):
-        """Test JSON formatter functionality."""
-        logger = get_logger("test.json")
+    def test_custom_formatter_logging(self):
+        """Test custom formatter functionality."""
+        logger = get_logger("test.custom")
 
-        # Create a string stream handler with JSON formatter
+        # Create a string stream handler with custom formatter
         import io
 
         stream = io.StringIO()
         handler = logging.StreamHandler(stream)
 
-        # Use the json formatter from python-json-logger
-        from pythonjsonlogger import jsonlogger
+        # Use a simple custom formatter since we removed pythonjsonlogger
+        class SimpleFormatter(logging.Formatter):
+            def format(self, record):
+                # Simple key=value format
+                base = super().format(record)
+                extras = []
+                for key, value in record.__dict__.items():
+                    if key not in ['name', 'msg', 'args', 'levelname', 'levelno', 
+                                   'pathname', 'filename', 'module', 'lineno', 
+                                   'funcName', 'created', 'msecs', 'relativeCreated',
+                                   'thread', 'threadName', 'processName', 'process',
+                                   'stack_info', 'exc_info', 'exc_text', 'message']:
+                        extras.append(f"{key}={value}")
+                if extras:
+                    return f"{base} | {' '.join(extras)}"
+                return base
 
-        formatter = jsonlogger.JsonFormatter()
+        formatter = SimpleFormatter()
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
 
-        # Log a message
+        # Log a message with extra fields
         logger.info("Test message", extra={"user_id": "123", "action": "test"})
 
-        # Check output
+        # Check output contains our data
         output = stream.getvalue()
-        data = json.loads(output.strip())
-
-        assert data["message"] == "Test message"
-        assert data["user_id"] == "123"
-        assert data["action"] == "test"
+        assert "Test message" in output
+        assert "user_id=123" in output
+        assert "action=test" in output
 
 
 class TestFileHandler:
