@@ -83,7 +83,7 @@ class TestBasicAugmentations:
 
     def test_pitch_shift(self, sample_audio):
         """Test pitch shifting."""
-        waveform, sample_rate = sample_rate
+        waveform, sample_rate = sample_audio
 
         aug = PitchShift(probability=1.0, semitone_range=(-2, 2))
         result = aug(waveform, sample_rate)

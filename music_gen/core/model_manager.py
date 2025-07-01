@@ -12,7 +12,7 @@ from typing import Dict, Optional, Any
 import torch
 
 from ..optimization.fast_generator import FastMusicGenerator
-from ..inference.real_multi_instrument import RealMultiInstrumentGenerator
+from ..optimization.fast_generator import FastMusicGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class ModelManager:
                 **kwargs
             )
         elif model_type == "multi_instrument":
-            model = RealMultiInstrumentGenerator(
+            model = FastMusicGenerator(
                 model_name=model_name,
                 device=device,
                 cache_dir=str(self._cache_dir),

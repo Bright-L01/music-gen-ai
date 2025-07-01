@@ -183,7 +183,7 @@ class TestIndividualAugmentations:
 
     def test_filter_augmentation(self, sample_audio):
         """Test filter augmentation."""
-        audio, sample_rate = sample_rate
+        audio, sample_rate = sample_audio
 
         aug = FilterAugmentation(filter_type="lowpass", cutoff_freq=8000)
 

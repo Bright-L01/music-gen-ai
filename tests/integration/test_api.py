@@ -6,6 +6,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+import torch
+import io
 
 from music_gen.api.main import app
 
