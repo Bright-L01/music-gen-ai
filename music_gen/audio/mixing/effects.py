@@ -108,6 +108,30 @@ class EQ(BaseEffect):
                 a0 = (A + 1) - (A - 1) * cos_omega + beta * sin_omega
                 a1 = 2 * ((A - 1) - (A + 1) * cos_omega)
                 a2 = (A + 1) - (A - 1) * cos_omega - beta * sin_omega
+            elif filter_type == "high_pass":
+                # High pass filter
+                b0 = 1
+                b1 = -2 * cos_omega
+                b2 = 1
+                a0 = 1 + alpha
+                a1 = -2 * cos_omega
+                a2 = 1 - alpha
+            elif filter_type == "low_pass":
+                # Low pass filter  
+                b0 = (1 - cos_omega) / 2
+                b1 = 1 - cos_omega
+                b2 = (1 - cos_omega) / 2
+                a0 = 1 + alpha
+                a1 = -2 * cos_omega
+                a2 = 1 - alpha
+            else:
+                # Default to bell filter for unknown types
+                b0 = 1 + alpha * A
+                b1 = -2 * cos_omega
+                b2 = 1 - alpha * A
+                a0 = 1 + alpha / A
+                a1 = -2 * cos_omega
+                a2 = 1 - alpha / A
 
             # Normalize coefficients
             b0 /= a0

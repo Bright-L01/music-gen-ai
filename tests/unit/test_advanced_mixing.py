@@ -97,7 +97,7 @@ class TestAutomationLane:
 
     def test_get_value_at_time(self):
         """Test getting interpolated values."""
-        lane = AutomationLane()
+        lane = AutomationLane(parameter_name="test", min_value=-1.0, max_value=1.0)
 
         # Add automation points
         lane.add_point(0.0, -1.0)

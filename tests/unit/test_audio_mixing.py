@@ -217,7 +217,7 @@ class TestAutomation:
     @pytest.fixture
     def lane(self):
         """Create automation lane."""
-        return AutomationLane()
+        return AutomationLane(parameter_name="test", min_value=-1.0, max_value=1.0)
 
     def test_volume_automation(self, lane):
         """Test volume automation."""
