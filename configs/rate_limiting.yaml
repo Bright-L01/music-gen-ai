@@ -1,0 +1,227 @@
+# Rate Limiting Configuration for Music Gen AI API
+# This file contains example configurations for various deployment scenarios
+
+# Basic Configuration
+rate_limiting:
+  # Enable proxy header parsing (set to false if not behind proxy)
+  enable_proxy_headers: true
+  
+  # Default tier for unauthenticated requests
+  default_tier: free
+  
+  # Storage backend (redis or memory)
+  storage: redis
+  
+  # Redis configuration
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    db: ${REDIS_RATELIMIT_DB:2}
+
+# Trusted Proxy Configuration
+trusted_proxies:
+  # Local/Private networks (always trusted)
+  - "127.0.0.1"
+  - "::1"
+  - "10.0.0.0/8"
+  - "172.16.0.0/12"
+  - "192.168.0.0/16"
+  - "fc00::/7"
+  
+  # Add your specific proxy IPs/ranges here
+  # Examples:
+  
+  # Cloudflare IP ranges (as of 2024)
+  - "173.245.48.0/20"
+  - "103.21.244.0/22"
+  - "103.22.200.0/22"
+  - "103.31.4.0/22"
+  - "141.101.64.0/18"
+  - "108.162.192.0/18"
+  - "190.93.240.0/20"
+  - "188.114.96.0/20"
+  - "197.234.240.0/22"
+  - "198.41.128.0/17"
+  - "162.158.0.0/15"
+  - "172.64.0.0/13"
+  - "131.0.72.0/22"
+  - "104.16.0.0/13"
+  - "104.24.0.0/14"
+  
+  # AWS ELB/ALB ranges (use AWS IP ranges API for current list)
+  # - "52.46.0.0/18"
+  # - "52.84.0.0/15"
+  
+  # Google Cloud Load Balancer
+  # - "35.191.0.0/16"
+  # - "130.211.0.0/22"
+
+# Rate Limit Tiers
+rate_limit_tiers:
+  free:
+    requests_per_minute: 30
+    requests_per_hour: 500
+    requests_per_day: 5000
+    burst_size: 5
+  
+  premium:
+    requests_per_minute: 60
+    requests_per_hour: 2000
+    requests_per_day: 20000
+    burst_size: 10
+  
+  enterprise:
+    requests_per_minute: 300
+    requests_per_hour: 10000
+    requests_per_day: 100000
+    burst_size: 50
+  
+  internal:
+    requests_per_minute: 1000
+    requests_per_hour: 50000
+    requests_per_day: 1000000
+    burst_size: 100
+  
+  admin:
+    requests_per_minute: 1000
+    requests_per_hour: 50000
+    requests_per_day: 1000000
+    burst_size: 100
+
+# Internal Service Configuration
+internal_services:
+  # API keys for internal services that bypass rate limiting
+  api_keys:
+    - ${MONITORING_API_KEY}
+    - ${METRICS_COLLECTOR_KEY}
+    - ${HEALTH_CHECK_KEY}
+  
+  # Service names that are allowed to bypass
+  service_names:
+    - "monitoring-service"
+    - "metrics-collector"
+    - "health-checker"
+    - "load-balancer"
+
+# Proxy Header Priority
+# Headers are checked in this order for client IP extraction
+proxy_headers:
+  - "X-Forwarded-For"      # Standard proxy header
+  - "X-Real-IP"            # Nginx
+  - "CF-Connecting-IP"     # Cloudflare
+  - "X-Client-IP"          # Some proxies
+  - "X-Forwarded"          # Variation
+  - "Forwarded-For"        # Variation
+  - "Forwarded"            # RFC 7239
+
+# Exempt Paths (no rate limiting)
+exempt_paths:
+  - "/health"
+  - "/health/"
+  - "/metrics"
+  - "/docs"
+  - "/redoc"
+  - "/openapi.json"
+  - "/favicon.ico"
+
+# Environment-Specific Overrides
+environments:
+  development:
+    enable_proxy_headers: false
+    default_tier: premium
+    storage: memory
+    # Trust all proxies in dev (DANGEROUS - never in production!)
+    trust_all_proxies: true
+  
+  staging:
+    enable_proxy_headers: true
+    default_tier: free
+    storage: redis
+    trusted_proxies:
+      - "10.0.0.0/8"  # Internal network only
+  
+  production:
+    enable_proxy_headers: true
+    default_tier: free
+    storage: redis
+    # Production should have specific proxy IPs
+    trust_all_proxies: false
+    
+    # Additional security headers for production
+    security_headers:
+      - name: "X-RateLimit-Policy"
+        value: "https://api.musicgen.ai/rate-limit-policy"
+      - name: "X-RateLimit-Support"
+        value: "support@musicgen.ai"
+
+# Monitoring and Alerting
+monitoring:
+  # Log when rate limit is exceeded
+  log_violations: true
+  
+  # Alert thresholds
+  alerts:
+    - type: "rate_limit_exceeded"
+      threshold: 100  # Alert if 100+ requests are rate limited per minute
+      channel: "slack"
+    
+    - type: "suspicious_activity"
+      threshold: 50   # Alert if same IP hits rate limit 50 times
+      channel: "security"
+  
+  # Metrics to track
+  metrics:
+    - "requests_per_tier"
+    - "rate_limited_requests"
+    - "unique_ips"
+    - "proxy_header_usage"
+    - "internal_service_requests"
+
+# Example Nginx Configuration
+nginx_example: |
+  # Nginx configuration to pass real client IP
+  location /api {
+      proxy_pass http://localhost:8000;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header Host $host;
+  }
+
+# Example Apache Configuration  
+apache_example: |
+  # Apache configuration to pass real client IP
+  <Location /api>
+      ProxyPass http://localhost:8000/api
+      ProxyPassReverse http://localhost:8000/api
+      RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+      RequestHeader set X-Forwarded-For "%{X-Forwarded-For}e"
+      RequestHeader set X-Forwarded-Proto "%{REQUEST_SCHEME}s"
+  </Location>
+
+# Example Kubernetes Ingress Annotations
+k8s_ingress_example:
+  annotations:
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    nginx.ingress.kubernetes.io/compute-full-forwarded-for: "true"
+    nginx.ingress.kubernetes.io/use-proxy-protocol: "false"
+    nginx.ingress.kubernetes.io/enable-real-ip: "true"
+
+# Example Docker Compose Configuration
+docker_compose_example: |
+  version: '3.8'
+  services:
+    api:
+      environment:
+        - REDIS_HOST=redis
+        - ENABLE_PROXY_HEADERS=true
+        - TRUSTED_PROXIES=172.16.0.0/12
+        - DEFAULT_RATE_LIMIT_TIER=free
+        - INTERNAL_API_KEYS=secret-key-1,secret-key-2
+    
+    nginx:
+      image: nginx:alpine
+      volumes:
+        - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      depends_on:
+        - api
