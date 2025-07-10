@@ -75,9 +75,9 @@ class TestConditioningModel:
         """Test InstrumentClassifier forward pass."""
         model = InstrumentClassifier(mock_config).to(device)
 
-        # Create test audio input
+        # Create test audio input (need large input for Conv1d layers)
         batch_size = 2
-        num_samples = 32000  # 1 second at 32kHz
+        num_samples = 100000  # Larger input to handle the conv layers
         audio = torch.randn(batch_size, num_samples).to(device)
 
         # Test forward pass

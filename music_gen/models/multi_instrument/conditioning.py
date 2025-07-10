@@ -216,7 +216,6 @@ class InstrumentConditioner(nn.Module):
             and layer_idx is not None
             and layer_idx in self.config.instrument_cross_attention_layers
         ):
-
             # Expand conditioning to sequence length
             conditioning_expanded = conditioning.unsqueeze(2).expand(-1, -1, seq_len, -1)
             conditioning_flat = conditioning_expanded.reshape(

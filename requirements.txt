@@ -65,4 +65,4 @@ prometheus-client>=0.16.0
 
 # Optional audio features (install separately if needed)
 # torchvggish  # For FAD computation
-# madmom       # For advanced audio analysis
+# madmom       # For advanced audio analysissqlalchemy[asyncio]>=2.0.0,<2.1.0

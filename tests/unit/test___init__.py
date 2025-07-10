@@ -16,15 +16,15 @@ class TestInit:
         assert MixingEngine is not None
         assert MixingConfig is not None
         assert TrackConfig is not None
-        
+
         # Test effect classes
         assert EffectChain is not None
         assert EQ is not None
-        
+
         # Test automation classes
         assert AutomationLane is not None
         assert AutomationPoint is not None
-        
+
         # Test mastering classes
         assert MasteringChain is not None
 
@@ -36,13 +36,13 @@ class TestInit:
             assert isinstance(effect_chain, EffectChain)
         except Exception as e:
             pytest.skip(f"EffectChain instantiation failed: {e}")
-            
+
         try:
             eq = EQ()
             assert isinstance(eq, EQ)
         except Exception as e:
             pytest.skip(f"EQ instantiation failed: {e}")
-            
+
         try:
             automation_point = AutomationPoint(time=0.0, value=1.0)
             assert isinstance(automation_point, AutomationPoint)
@@ -53,7 +53,7 @@ class TestInit:
         """Test that __all__ contains expected exports."""
         expected_exports = [
             "MixingEngine",
-            "MixingConfig", 
+            "MixingConfig",
             "TrackConfig",
             "EffectChain",
             "EQ",
@@ -68,7 +68,8 @@ class TestInit:
             "AutomationPoint",
             "MasteringChain",
         ]
-        
+
         import music_gen.audio.mixing as mixing_module
+
         for export in expected_exports:
             assert hasattr(mixing_module, export), f"Missing export: {export}"

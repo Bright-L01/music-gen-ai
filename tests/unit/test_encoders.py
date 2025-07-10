@@ -45,12 +45,23 @@ class TestEncodersModel:
 
     def test_conditioningencoder_forward(self, device):
         """Test ConditioningEncoder forward pass."""
-        model = ConditioningEncoder().to(device)
+        model = ConditioningEncoder(
+            genre_vocab_size=10,
+            mood_vocab_size=5,
+            embedding_dim=64,
+            use_genre=True,
+            use_mood=True,
+            use_tempo=False,
+            use_duration=False,
+            use_instruments=False,
+            fusion_method="concat",
+        ).to(device)
         genre_ids = torch.randint(0, 10, (2,))
         mood_ids = torch.randint(0, 5, (2,))
         output = model(genre_ids=genre_ids, mood_ids=mood_ids)
         assert output.shape[0] == 2
-        assert output.shape[1] == model.output_dim
+        # With concat fusion and 2 active conditioning (genre + mood), each 64dim = 128 total
+        assert output.shape[1] == 128
 
     def test_multimodalencoder_creation(self, device):
         """Test MultiModalEncoder model creation."""

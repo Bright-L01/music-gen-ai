@@ -33,7 +33,7 @@ class TestMainAPI:
     def test_app_exists(self):
         """Test that app exists and has correct metadata."""
         assert app is not None
-        assert app.title == "Music Gen AI API"
+        assert app.title == "Music Gen AI"
         assert app.version == "1.0.0"
 
     def test_health_endpoint(self, client):

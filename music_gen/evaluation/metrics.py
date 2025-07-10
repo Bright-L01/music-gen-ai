@@ -5,11 +5,10 @@ Audio quality evaluation metrics for music generation.
 import logging
 from typing import Dict, List, Optional, Tuple, Union
 
-import librosa
 import numpy as np
 import torch
-from scipy import linalg
-from sklearn.metrics.pairwise import cosine_similarity
+
+from music_gen.utils.optional_imports import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +34,19 @@ class AudioQualityMetrics:
         self.compute_clap = compute_clap
         self.compute_inception_score = compute_inception_score
 
-        # Pre-compute mel filterbank
-        self.mel_basis = librosa.filters.mel(
-            sr=sample_rate,
-            n_fft=n_fft,
-            n_mels=n_mels,
-            fmin=0,
-            fmax=sample_rate // 2,
-        )
+        # Pre-compute mel filterbank if librosa is available
+        with optional_import("librosa") as librosa:
+            if librosa is not None:
+                self.mel_basis = librosa.filters.mel(
+                    sr=sample_rate,
+                    n_fft=n_fft,
+                    n_mels=n_mels,
+                    fmin=0,
+                    fmax=sample_rate // 2,
+                )
+            else:
+                logger.warning("librosa not available, mel filterbank features disabled")
+                self.mel_basis = None
 
         # Initialize feature extractors
         if compute_fad:
@@ -66,85 +70,372 @@ class AudioQualityMetrics:
     def _init_clap_model(self):
         """Initialize CLAP model for text-audio alignment."""
         try:
-            # This would require a CLAP model implementation
-            # For now, we'll skip this and use a placeholder
-            logger.warning("CLAP model not implemented, using placeholder")
-            self.compute_clap = False
+            # Try to load actual CLAP model first
+            with optional_import("transformers") as transformers:
+                if transformers is None:
+                    logger.warning("transformers library not available, CLAP computation disabled")
+                    self.compute_clap = False
+                    return
+
+            # Try to load Microsoft's CLAP model from HuggingFace
+            try:
+                from transformers import AutoProcessor, ClapModel
+
+                logger.info("Attempting to load Microsoft CLAP model...")
+                self.clap_model = ClapModel.from_pretrained("microsoft/clap-htsat-unfused")
+                self.clap_processor = AutoProcessor.from_pretrained("microsoft/clap-htsat-unfused")
+                self.text_encoder = None  # Using integrated CLAP model
+                logger.info("✅ Successfully loaded Microsoft CLAP model")
+
+            except Exception as clap_error:
+                logger.warning(f"Could not load Microsoft CLAP model: {clap_error}")
+
+                # Fallback to sentence transformers as proxy
+                with optional_import("sentence_transformers") as sentence_transformers:
+                    if sentence_transformers is not None:
+                        logger.info(
+                            "Falling back to sentence transformers for text-audio alignment"
+                        )
+                        self.text_encoder = sentence_transformers.SentenceTransformer(
+                            "all-MiniLM-L6-v2"
+                        )
+                        self.clap_model = None
+                        self.clap_processor = None
+                        logger.warning(
+                            "⚠️ Using sentence transformers proxy - not a true CLAP implementation"
+                        )
+                    else:
+                        logger.error("Neither CLAP model nor sentence-transformers available")
+                        self.compute_clap = False
+                        self.text_encoder = None
+                        self.clap_model = None
+                        self.clap_processor = None
+                        return
+
+            # Initialize audio feature extractor for CLAP
+            self.clap_audio_features = {}
+
         except Exception as e:
             logger.warning(f"Failed to initialize CLAP model: {e}")
             self.compute_clap = False
+            self.text_encoder = None
+            self.clap_model = None
+            self.clap_processor = None
 
     def extract_mel_spectrogram(
         self,
         audio: np.ndarray,
         log_scale: bool = True,
-    ) -> np.ndarray:
+    ) -> Optional[np.ndarray]:
         """Extract mel spectrogram features from audio."""
 
-        # Compute STFT
-        stft = librosa.stft(
-            audio,
+        if self.mel_basis is None:
+            logger.warning("Mel filterbank not available, skipping mel spectrogram extraction")
+            return None
+
+        with optional_import("librosa") as librosa:
+            if librosa is None:
+                # Fallback to torch-based implementation
+                return self._torch_mel_spectrogram(audio, log_scale)
+
+            # Compute STFT
+            stft = librosa.stft(
+                audio,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                window="hann",
+            )
+
+            # Convert to magnitude spectrogram
+            magnitude = np.abs(stft)
+
+            # Apply mel filterbank
+            mel_spec = np.dot(self.mel_basis, magnitude)
+
+            # Convert to log scale
+            if log_scale:
+                mel_spec = np.log(mel_spec + 1e-8)
+
+            return mel_spec
+
+    def _torch_mel_spectrogram(self, audio: np.ndarray, log_scale: bool = True) -> np.ndarray:
+        """Fallback mel spectrogram using torch."""
+        # Convert to torch tensor
+        audio_tensor = torch.from_numpy(audio).float()
+
+        # Compute STFT using torch
+        stft = torch.stft(
+            audio_tensor,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
-            window="hann",
+            window=torch.hann_window(self.n_fft),
+            return_complex=True,
         )
 
-        # Convert to magnitude spectrogram
-        magnitude = np.abs(stft)
+        # Get magnitude
+        magnitude = torch.abs(stft)
 
-        # Apply mel filterbank
-        mel_spec = np.dot(self.mel_basis, magnitude)
+        # Apply mel filterbank (convert to torch if needed)
+        if isinstance(self.mel_basis, np.ndarray):
+            mel_basis_torch = torch.from_numpy(self.mel_basis).float()
+        else:
+            mel_basis_torch = self.mel_basis
+
+        mel_spec = torch.matmul(mel_basis_torch, magnitude)
 
         # Convert to log scale
         if log_scale:
-            mel_spec = np.log(mel_spec + 1e-8)
+            mel_spec = torch.log(mel_spec + 1e-8)
 
-        return mel_spec
+        return mel_spec.numpy()
 
     def extract_audio_features(self, audio: np.ndarray) -> Dict[str, np.ndarray]:
         """Extract comprehensive audio features."""
 
         features = {}
 
-        # Spectral features
-        stft = librosa.stft(audio, n_fft=self.n_fft, hop_length=self.hop_length)
-        magnitude = np.abs(stft)
+        with optional_import("librosa") as librosa:
+            if librosa is None:
+                # Fallback to basic features
+                return self._extract_basic_features(audio)
 
-        # Spectral centroid
-        features["spectral_centroid"] = librosa.feature.spectral_centroid(
-            S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
-        )
+            # Spectral features
+            stft = librosa.stft(audio, n_fft=self.n_fft, hop_length=self.hop_length)
+            magnitude = np.abs(stft)
 
-        # Spectral rolloff
-        features["spectral_rolloff"] = librosa.feature.spectral_rolloff(
-            S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
-        )
+            # Spectral centroid
+            features["spectral_centroid"] = librosa.feature.spectral_centroid(
+                S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
+            )
 
-        # Spectral bandwidth
-        features["spectral_bandwidth"] = librosa.feature.spectral_bandwidth(
-            S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
-        )
+            # Spectral rolloff
+            features["spectral_rolloff"] = librosa.feature.spectral_rolloff(
+                S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
+            )
 
-        # Zero crossing rate
-        features["zcr"] = librosa.feature.zero_crossing_rate(audio, hop_length=self.hop_length)
+            # Spectral bandwidth
+            features["spectral_bandwidth"] = librosa.feature.spectral_bandwidth(
+                S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
+            )
 
-        # MFCCs
-        features["mfcc"] = librosa.feature.mfcc(
-            y=audio, sr=self.sample_rate, n_mfcc=13, hop_length=self.hop_length
-        )
+            # Zero crossing rate
+            features["zcr"] = librosa.feature.zero_crossing_rate(audio, hop_length=self.hop_length)
 
-        # Chroma features
-        features["chroma"] = librosa.feature.chroma_stft(
-            S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
-        )
+            # MFCCs
+            features["mfcc"] = librosa.feature.mfcc(
+                y=audio, sr=self.sample_rate, n_mfcc=13, hop_length=self.hop_length
+            )
 
-        # Mel spectrogram
-        features["mel_spectrogram"] = self.extract_mel_spectrogram(audio)
+            # Chroma features
+            features["chroma"] = librosa.feature.chroma_stft(
+                S=magnitude, sr=self.sample_rate, hop_length=self.hop_length
+            )
 
-        # Tonnetz (harmonic network)
-        features["tonnetz"] = librosa.feature.tonnetz(y=audio, sr=self.sample_rate)
+            # Mel spectrogram
+            mel_spec = self.extract_mel_spectrogram(audio)
+            if mel_spec is not None:
+                features["mel_spectrogram"] = mel_spec
+
+            # Tonnetz (harmonic network)
+            features["tonnetz"] = librosa.feature.tonnetz(y=audio, sr=self.sample_rate)
 
         return features
+
+    def _extract_basic_features(self, audio: np.ndarray) -> Dict[str, np.ndarray]:
+        """Extract basic audio features when librosa is not available."""
+        features = {}
+
+        # Basic statistics
+        features["rms_energy"] = np.sqrt(np.mean(audio**2))
+        features["zero_crossing_rate"] = np.sum(np.diff(np.sign(audio)) != 0) / len(audio)
+        features["spectral_centroid"] = np.mean(np.abs(np.fft.fft(audio)))
+
+        # Mel spectrogram (torch-based)
+        mel_spec = self.extract_mel_spectrogram(audio)
+        if mel_spec is not None:
+            features["mel_spectrogram"] = mel_spec
+
+        return features
+
+    def compute_clap_score(
+        self, audio: Union[np.ndarray, List[np.ndarray]], text_prompts: Union[str, List[str]]
+    ) -> float:
+        """Compute CLAP score for text-audio alignment."""
+
+        if not self.compute_clap:
+            logger.warning("CLAP computation not available")
+            return 0.0
+
+        try:
+            # Ensure inputs are lists
+            if isinstance(audio, np.ndarray):
+                audio = [audio]
+            if isinstance(text_prompts, str):
+                text_prompts = [text_prompts]
+
+            # Use real CLAP model if available
+            if self.clap_model is not None and self.clap_processor is not None:
+                return self._compute_real_clap_score(audio, text_prompts)
+            elif self.text_encoder is not None:
+                return self._compute_proxy_clap_score(audio, text_prompts)
+            else:
+                logger.warning("No CLAP model or text encoder available")
+                return 0.0
+
+        except Exception as e:
+            logger.error(f"CLAP score computation failed: {e}")
+            return 0.0
+
+    def _compute_real_clap_score(self, audio: List[np.ndarray], text_prompts: List[str]) -> float:
+        """Compute CLAP score using the real Microsoft CLAP model."""
+
+        try:
+            import torch
+
+            # Process audio and text through CLAP
+            scores = []
+
+            for i, audio_sample in enumerate(audio):
+                text_prompt = text_prompts[i] if i < len(text_prompts) else text_prompts[0]
+
+                # Prepare inputs for CLAP model
+                # Convert audio to required format (mono, 48kHz for CLAP)
+                if len(audio_sample.shape) > 1:
+                    audio_sample = audio_sample.mean(axis=0)  # Convert to mono
+
+                # Resample to 48kHz if needed (CLAP requirement)
+                if hasattr(self, "sample_rate") and self.sample_rate != 48000:
+                    from scipy import signal
+
+                    audio_sample = signal.resample(
+                        audio_sample, int(len(audio_sample) * 48000 / self.sample_rate)
+                    )
+
+                # Process through CLAP
+                inputs = self.clap_processor(
+                    text=[text_prompt],
+                    audios=[audio_sample],
+                    return_tensors="pt",
+                    padding=True,
+                    sampling_rate=48000,
+                )
+
+                with torch.no_grad():
+                    outputs = self.clap_model(**inputs)
+
+                    # Get similarity score between text and audio
+                    logits_per_audio = outputs.logits_per_audio
+                    # Convert to probability and take the diagonal (text-audio alignment)
+                    prob = torch.softmax(logits_per_audio, dim=-1)
+                    score = prob[0, 0].item()  # First audio with first text
+                    scores.append(score)
+
+            return float(np.mean(scores))
+
+        except Exception as e:
+            logger.error(f"Real CLAP computation failed: {e}")
+            # Fallback to proxy method
+            return self._compute_proxy_clap_score(audio, text_prompts)
+
+    def _compute_proxy_clap_score(self, audio: List[np.ndarray], text_prompts: List[str]) -> float:
+        """Compute CLAP score using sentence transformers as a proxy."""
+
+        if self.text_encoder is None:
+            return 0.0
+
+        try:
+            # Extract text embeddings
+            text_embeddings = self.text_encoder.encode(text_prompts)
+
+            # Extract audio embeddings (simplified approach)
+            audio_embeddings = []
+            for audio_sample in audio:
+                # Extract audio features and reduce to embedding
+                features = self.extract_audio_features(audio_sample)
+
+                # Create a simple audio embedding from features
+                audio_embedding = self._create_audio_embedding(features)
+                audio_embeddings.append(audio_embedding)
+
+            audio_embeddings = np.array(audio_embeddings)
+
+            # Compute cosine similarity between text and audio embeddings
+            with optional_import("sklearn.metrics.pairwise") as pairwise:
+                if pairwise is None:
+                    # Fallback to manual cosine similarity
+                    similarities = []
+                    for i, text_emb in enumerate(text_embeddings):
+                        audio_emb = (
+                            audio_embeddings[i]
+                            if i < len(audio_embeddings)
+                            else audio_embeddings[0]
+                        )
+
+                        # Normalize embeddings
+                        text_norm = text_emb / (np.linalg.norm(text_emb) + 1e-8)
+                        audio_norm = audio_emb / (np.linalg.norm(audio_emb) + 1e-8)
+
+                        # Cosine similarity
+                        similarity = np.dot(text_norm, audio_norm)
+                        similarities.append(similarity)
+
+                    clap_score = np.mean(similarities)
+                else:
+                    # Use sklearn for cosine similarity
+                    from sklearn.metrics.pairwise import cosine_similarity
+
+                    similarities = cosine_similarity(text_embeddings, audio_embeddings)
+                    clap_score = np.mean(np.diag(similarities))
+
+            return float(clap_score)
+
+        except Exception as e:
+            logger.error(f"Proxy CLAP computation failed: {e}")
+            return 0.0
+
+    def _create_audio_embedding(self, features: Dict[str, np.ndarray]) -> np.ndarray:
+        """Create a simple audio embedding from extracted features."""
+
+        embedding_parts = []
+
+        # Use mel spectrogram if available
+        if "mel_spectrogram" in features:
+            mel_spec = features["mel_spectrogram"]
+            # Take mean over time dimension
+            mel_mean = np.mean(mel_spec, axis=1)
+            embedding_parts.append(mel_mean)
+
+        # Use MFCCs if available
+        if "mfcc" in features:
+            mfcc = features["mfcc"]
+            mfcc_mean = np.mean(mfcc, axis=1)
+            embedding_parts.append(mfcc_mean)
+
+        # Use spectral features if available
+        spectral_features = []
+        for key in ["spectral_centroid", "spectral_rolloff", "spectral_bandwidth", "zcr"]:
+            if key in features:
+                spectral_features.append(np.mean(features[key]))
+
+        if spectral_features:
+            embedding_parts.append(np.array(spectral_features))
+
+        # Combine all parts
+        if embedding_parts:
+            # Concatenate all features
+            combined = np.concatenate([part.flatten() for part in embedding_parts])
+
+            # Ensure fixed size (pad or truncate to 512 dimensions)
+            target_size = 512
+            if len(combined) > target_size:
+                combined = combined[:target_size]
+            elif len(combined) < target_size:
+                combined = np.pad(combined, (0, target_size - len(combined)))
+
+            return combined
+        else:
+            # Return zero embedding if no features available
+            return np.zeros(512)
 
     def compute_spectral_distance(
         self,

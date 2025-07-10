@@ -27,7 +27,7 @@ class TestGenerationApi:
             status="completed",
             audio_url="/download/test-task-123",
             duration=10.0,
-            metadata={"prompt": "Generate upbeat music"}
+            metadata={"prompt": "Generate upbeat music"},
         )
         assert response.task_id == "test-task-123"
         assert response.status == "completed"

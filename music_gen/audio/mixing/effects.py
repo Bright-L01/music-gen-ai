@@ -117,7 +117,7 @@ class EQ(BaseEffect):
                 a1 = -2 * cos_omega
                 a2 = 1 - alpha
             elif filter_type == "low_pass":
-                # Low pass filter  
+                # Low pass filter
                 b0 = (1 - cos_omega) / 2
                 b1 = 1 - cos_omega
                 b2 = (1 - cos_omega) / 2

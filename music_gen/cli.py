@@ -135,7 +135,6 @@ def generate(
             TaskProgressColumn(),
             TimeElapsedColumn(),
         ) as progress:
-
             gen_task = progress.add_task(
                 f"Generating '{prompt[:50]}...'" if len(prompt) > 50 else f"Generating '{prompt}'",
                 total=100,

@@ -661,3 +661,106 @@ def create_musicgen_model(model_size: str = "base", **config_overrides) -> Music
     config = MusicGenConfig(**config_dict)
 
     return MusicGenModel(config)
+
+
+# Performance optimization methods
+def compile_model(
+    model: MusicGenModel, mode: str = "max-autotune", dynamic: bool = False
+) -> MusicGenModel:
+    """Compile the model for better performance using PyTorch 2.0+."""
+    if not hasattr(torch, "compile"):
+        logger.warning("PyTorch compilation not available, requires PyTorch 2.0+")
+        return model
+
+    try:
+        logger.info(f"Compiling model with mode: {mode}")
+
+        # Compile transformer
+        model.transformer = torch.compile(
+            model.transformer,
+            mode=mode,
+            dynamic=dynamic,
+            fullgraph=False,  # Allow partial compilation
+        )
+
+        # Compile multimodal encoder if possible
+        try:
+            model.multimodal_encoder = torch.compile(
+                model.multimodal_encoder, mode=mode, dynamic=dynamic, fullgraph=False
+            )
+        except Exception as e:
+            logger.warning(f"Could not compile multimodal encoder: {e}")
+
+        # Compile audio tokenizer if possible
+        try:
+            model.audio_tokenizer = torch.compile(
+                model.audio_tokenizer, mode=mode, dynamic=dynamic, fullgraph=False
+            )
+        except Exception as e:
+            logger.warning(f"Could not compile audio tokenizer: {e}")
+
+        logger.info("Model compilation completed successfully")
+        return model
+
+    except Exception as e:
+        logger.error(f"Model compilation failed: {e}")
+        return model
+
+
+def enable_mixed_precision(model: MusicGenModel) -> MusicGenModel:
+    """Enable mixed precision training/inference."""
+    logger.info("Enabling mixed precision")
+
+    # Convert model to half precision where possible
+    for module in [model.transformer, model.multimodal_encoder]:
+        try:
+            # Convert to half precision but keep embeddings in float32
+            for name, param in module.named_parameters():
+                if "embed" not in name.lower() and "norm" not in name.lower():
+                    param.data = param.data.half()
+        except Exception as e:
+            logger.warning(f"Could not enable mixed precision for {type(module).__name__}: {e}")
+
+    return model
+
+
+def optimize_for_inference(model: MusicGenModel) -> MusicGenModel:
+    """Optimize model for inference performance."""
+    logger.info("Optimizing model for inference")
+
+    # Set to eval mode
+    model.eval()
+
+    # Disable gradient computation
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Enable optimized attention if available
+    try:
+        if hasattr(torch.nn.functional, "scaled_dot_product_attention"):
+            # Use optimized attention implementation
+            for module in model.modules():
+                if hasattr(module, "use_optimized_attention"):
+                    module.use_optimized_attention = True
+    except Exception as e:
+        logger.warning(f"Could not enable optimized attention: {e}")
+
+    return model
+
+
+def optimize_memory_usage(model: MusicGenModel) -> MusicGenModel:
+    """Optimize model for memory efficiency."""
+    logger.info("Optimizing memory usage")
+
+    # Enable gradient checkpointing if available
+    for module in model.modules():
+        if hasattr(module, "gradient_checkpointing"):
+            module.gradient_checkpointing = True
+        elif hasattr(module, "use_checkpoint"):
+            module.use_checkpoint = True
+
+    # Clear unused caches
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return model

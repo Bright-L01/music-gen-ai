@@ -2,9 +2,8 @@
 Streaming endpoints for Music Gen AI API.
 """
 
-import asyncio
 import uuid
-from typing import Dict, Optional
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
