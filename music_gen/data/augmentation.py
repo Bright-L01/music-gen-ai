@@ -7,7 +7,8 @@ import random
 from typing import List, Optional
 
 import torch
-import torchaudio
+
+from music_gen.utils.optional_imports import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +45,22 @@ class TimeStretch(AudioAugmentation):
         try:
             rate = self.fixed_rate if self.fixed_rate else random.uniform(*self.rate_range)
 
-            # Use torchaudio's time stretch
-            stretch = torchaudio.transforms.TimeStretch(
-                hop_length=512,
-                n_freq=201,  # For 16kHz audio with 512 hop
-            )
+            with optional_import("torchaudio") as torchaudio:
+                if torchaudio is None:
+                    # Fallback to simple resampling-based time stretch
+                    return self._simple_time_stretch(waveform, rate)
 
-            # Convert to spectrogram, stretch, then back
-            spec_transform = torchaudio.transforms.Spectrogram(
-                n_fft=400,
-                hop_length=512,
-            )
+                # Use torchaudio's time stretch
+                stretch = torchaudio.transforms.TimeStretch(
+                    hop_length=512,
+                    n_freq=201,  # For 16kHz audio with 512 hop
+                )
+
+                # Convert to spectrogram, stretch, then back
+                spec_transform = torchaudio.transforms.Spectrogram(
+                    n_fft=400,
+                    hop_length=512,
+                )
 
             # Apply to each channel
             stretched_channels = []
@@ -87,6 +93,48 @@ class TimeStretch(AudioAugmentation):
             logger.warning(f"Time stretch failed: {e}")
             return waveform
 
+    def _simple_time_stretch(self, waveform: torch.Tensor, rate: float) -> torch.Tensor:
+        """Simple time stretching using interpolation."""
+        # Simple approach: change playback speed (changes both tempo and pitch)
+        new_length = int(waveform.shape[-1] / rate)
+
+        # Use linear interpolation
+        indices = torch.linspace(0, waveform.shape[-1] - 1, new_length, device=waveform.device)
+        indices_floor = torch.floor(indices).long()
+        indices_ceil = torch.ceil(indices).long()
+
+        # Clamp to valid range
+        indices_floor = torch.clamp(indices_floor, 0, waveform.shape[-1] - 1)
+        indices_ceil = torch.clamp(indices_ceil, 0, waveform.shape[-1] - 1)
+
+        # Interpolation weights
+        weights = indices - indices_floor.float()
+
+        if waveform.dim() > 1:
+            # Multi-channel
+            stretched = torch.zeros(
+                waveform.shape[0], new_length, device=waveform.device, dtype=waveform.dtype
+            )
+            for ch in range(waveform.shape[0]):
+                floor_values = waveform[ch, indices_floor]
+                ceil_values = waveform[ch, indices_ceil]
+                stretched[ch] = floor_values * (1 - weights) + ceil_values * weights
+        else:
+            # Mono
+            floor_values = waveform[indices_floor]
+            ceil_values = waveform[indices_ceil]
+            stretched = floor_values * (1 - weights) + ceil_values * weights
+
+        # Pad or trim to original length
+        if stretched.shape[-1] != waveform.shape[-1]:
+            if stretched.shape[-1] > waveform.shape[-1]:
+                stretched = stretched[..., : waveform.shape[-1]]
+            else:
+                padding = waveform.shape[-1] - stretched.shape[-1]
+                stretched = torch.nn.functional.pad(stretched, (0, padding))
+
+        return stretched
+
 
 class PitchShift(AudioAugmentation):
     """Pitch shifting augmentation."""
@@ -109,16 +157,62 @@ class PitchShift(AudioAugmentation):
                 else random.uniform(*self.semitone_range)
             )
 
-            pitch_shift = torchaudio.transforms.PitchShift(
-                sample_rate=sample_rate,
-                n_steps=n_steps,
-            )
+            with optional_import("torchaudio") as torchaudio:
+                if torchaudio is None:
+                    # Fallback to simple pitch shifting (affects tempo too)
+                    return self._simple_pitch_shift(waveform, n_steps)
 
-            return pitch_shift(waveform)
+                pitch_shift = torchaudio.transforms.PitchShift(
+                    sample_rate=sample_rate,
+                    n_steps=n_steps,
+                )
+
+                return pitch_shift(waveform)
 
         except Exception as e:
             logger.warning(f"Pitch shift failed: {e}")
             return waveform
+
+    def _simple_pitch_shift(self, waveform: torch.Tensor, n_steps: float) -> torch.Tensor:
+        """Simple pitch shifting using playback rate change."""
+        # Convert semitones to rate change: 2^(n_steps/12)
+        rate = 2 ** (n_steps / 12)
+
+        # This is essentially time stretching in reverse
+        new_length = int(waveform.shape[-1] / rate)
+
+        # Linear interpolation
+        indices = torch.linspace(0, waveform.shape[-1] - 1, new_length, device=waveform.device)
+        indices_floor = torch.floor(indices).long()
+        indices_ceil = torch.ceil(indices).long()
+
+        indices_floor = torch.clamp(indices_floor, 0, waveform.shape[-1] - 1)
+        indices_ceil = torch.clamp(indices_ceil, 0, waveform.shape[-1] - 1)
+
+        weights = indices - indices_floor.float()
+
+        if waveform.dim() > 1:
+            pitched = torch.zeros(
+                waveform.shape[0], new_length, device=waveform.device, dtype=waveform.dtype
+            )
+            for ch in range(waveform.shape[0]):
+                floor_values = waveform[ch, indices_floor]
+                ceil_values = waveform[ch, indices_ceil]
+                pitched[ch] = floor_values * (1 - weights) + ceil_values * weights
+        else:
+            floor_values = waveform[indices_floor]
+            ceil_values = waveform[indices_ceil]
+            pitched = floor_values * (1 - weights) + ceil_values * weights
+
+        # Resize to original length
+        if pitched.shape[-1] != waveform.shape[-1]:
+            if pitched.shape[-1] > waveform.shape[-1]:
+                pitched = pitched[..., : waveform.shape[-1]]
+            else:
+                padding = waveform.shape[-1] - pitched.shape[-1]
+                pitched = torch.nn.functional.pad(pitched, (0, padding))
+
+        return pitched
 
 
 class AddNoise(AudioAugmentation):
@@ -214,9 +308,17 @@ class FrequencyMasking(AudioAugmentation):
 
     def apply(self, waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
         try:
-            # Convert to spectrogram
-            spec_transform = torchaudio.transforms.Spectrogram(n_fft=1024, hop_length=256)
-            inverse_transform = torchaudio.transforms.InverseSpectrogram(n_fft=1024, hop_length=256)
+            with optional_import("torchaudio") as torchaudio:
+                if torchaudio is None:
+                    # Fallback to time domain masking instead
+                    logger.warning("torchaudio not available, falling back to time masking")
+                    return self._fallback_masking(waveform)
+
+                # Convert to spectrogram
+                spec_transform = torchaudio.transforms.Spectrogram(n_fft=1024, hop_length=256)
+                inverse_transform = torchaudio.transforms.InverseSpectrogram(
+                    n_fft=1024, hop_length=256
+                )
 
             # Process each channel
             masked_channels = []
@@ -238,6 +340,36 @@ class FrequencyMasking(AudioAugmentation):
         except Exception as e:
             logger.warning(f"Frequency masking failed: {e}")
             return waveform
+
+    def _fallback_masking(self, waveform: torch.Tensor) -> torch.Tensor:
+        """Fallback to simple time domain filtering when torchaudio unavailable."""
+        # Apply simple filtering to approximate frequency masking
+        result = waveform.clone()
+
+        for _ in range(self.num_masks):
+            # Create a simple low-pass or high-pass filter effect
+            if random.random() > 0.5:
+                # Simple low-pass (removes high frequencies)
+                kernel = torch.tensor([0.25, 0.5, 0.25], device=waveform.device)
+                for ch in range(result.shape[0]):
+                    filtered = torch.nn.functional.conv1d(
+                        result[ch : ch + 1].unsqueeze(0),
+                        kernel.unsqueeze(0).unsqueeze(0),
+                        padding=1,
+                    ).squeeze()
+                    result[ch] = filtered[: result.shape[-1]]
+            else:
+                # Simple high-pass (removes low frequencies)
+                kernel = torch.tensor([-0.25, 0.5, -0.25], device=waveform.device)
+                for ch in range(result.shape[0]):
+                    filtered = torch.nn.functional.conv1d(
+                        result[ch : ch + 1].unsqueeze(0),
+                        kernel.unsqueeze(0).unsqueeze(0),
+                        padding=1,
+                    ).squeeze()
+                    result[ch] = filtered[: result.shape[-1]]
+
+        return result
 
 
 class TimeMasking(AudioAugmentation):
@@ -379,6 +511,94 @@ class PolymixAugmentation(AudioAugmentation):
             result = (1 - mix_ratio) * result + mix_ratio * mix_sample
 
         return result
+
+
+class Compression(AudioAugmentation):
+    """Dynamic range compression augmentation."""
+
+    def __init__(
+        self,
+        probability: float = 0.2,
+        threshold_range: tuple = (0.1, 0.8),
+        ratio_range: tuple = (2.0, 8.0),
+    ):
+        super().__init__(probability)
+        self.threshold_range = threshold_range
+        self.ratio_range = ratio_range
+
+    def apply(self, waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        threshold = random.uniform(*self.threshold_range)
+        ratio = random.uniform(*self.ratio_range)
+
+        # Simple peak compression
+        peak_values = torch.abs(waveform)
+
+        # Find samples above threshold
+        mask = peak_values > threshold
+
+        # Apply compression
+        compressed = waveform.clone()
+        compressed[mask] = torch.sign(compressed[mask]) * (
+            threshold + (peak_values[mask] - threshold) / ratio
+        )
+
+        return compressed
+
+
+class BandpassFilter(AudioAugmentation):
+    """Simple bandpass filtering."""
+
+    def __init__(
+        self,
+        probability: float = 0.15,
+        low_freq_range: tuple = (200, 1000),
+        high_freq_range: tuple = (4000, 8000),
+    ):
+        super().__init__(probability)
+        self.low_freq_range = low_freq_range
+        self.high_freq_range = high_freq_range
+
+    def apply(self, waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        low_freq = random.uniform(*self.low_freq_range)
+        high_freq = random.uniform(*self.high_freq_range)
+
+        # Ensure high > low
+        if high_freq <= low_freq:
+            high_freq = low_freq + 1000
+
+        # Simple FFT-based filtering
+        fft = torch.fft.fft(waveform)
+        freqs = torch.fft.fftfreq(waveform.shape[-1], d=1 / sample_rate, device=waveform.device)
+
+        # Create bandpass mask
+        mask = (torch.abs(freqs) >= low_freq) & (torch.abs(freqs) <= high_freq)
+
+        # Apply filter
+        filtered_fft = fft * mask.unsqueeze(0)
+        filtered_waveform = torch.fft.ifft(filtered_fft).real
+
+        return filtered_waveform
+
+
+class ChannelSwap(AudioAugmentation):
+    """Swap stereo channels or duplicate mono to stereo."""
+
+    def __init__(self, probability: float = 0.1):
+        super().__init__(probability)
+
+    def apply(self, waveform: torch.Tensor, sample_rate: int) -> torch.Tensor:
+        if waveform.shape[0] == 1:
+            # Mono to fake stereo with slight delay
+            delay_samples = random.randint(1, 10)
+            delayed = torch.nn.functional.pad(waveform, (delay_samples, 0))[:, :-delay_samples]
+            return torch.stack([waveform[0], delayed[0]], dim=0)
+        elif waveform.shape[0] == 2:
+            # Swap channels
+            return torch.stack([waveform[1], waveform[0]], dim=0)
+        else:
+            # Multi-channel: randomly shuffle
+            indices = torch.randperm(waveform.shape[0])
+            return waveform[indices]
 
 
 class AugmentationPipeline:

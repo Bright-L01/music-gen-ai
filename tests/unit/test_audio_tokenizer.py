@@ -24,8 +24,8 @@ class TestAudioTokenizerModel:
         try:
             model = EnCodecTokenizer()
             assert isinstance(model, nn.Module)
-            assert hasattr(model, 'sample_rate')
-            assert hasattr(model, 'bandwidth')
+            assert hasattr(model, "sample_rate")
+            assert hasattr(model, "bandwidth")
         except Exception as e:
             pytest.skip(f"EnCodecTokenizer creation failed (expected without EnCodec): {e}")
 
@@ -73,4 +73,6 @@ class TestAudioTokenizerModel:
             assert isinstance(audio_decoded, list)
             assert len(audio_decoded) == 1
         except Exception as e:
-            pytest.skip(f"MultiResolutionTokenizer forward test failed (expected without EnCodec): {e}")
+            pytest.skip(
+                f"MultiResolutionTokenizer forward test failed (expected without EnCodec): {e}"
+            )

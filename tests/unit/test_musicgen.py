@@ -27,7 +27,7 @@ class TestMusicgenModel:
                 mock_instance.codebook_size = 256
                 mock_instance.num_quantizers = 8
                 mock_tokenizer.return_value = mock_instance
-                
+
                 model = MusicGenModel(test_config)
                 assert isinstance(model, nn.Module)
         except Exception as e:
@@ -42,15 +42,15 @@ class TestMusicgenModel:
                     mock_tokenizer_instance.codebook_size = 256
                     mock_tokenizer_instance.num_quantizers = 8
                     mock_tokenizer.return_value = mock_tokenizer_instance
-                    
+
                     mock_t5_instance = MagicMock()
                     mock_t5_instance.hidden_size = test_config.transformer.hidden_size
                     mock_t5.return_value = mock_t5_instance
-                    
+
                     model = MusicGenModel(test_config).to(device)
                     output = model(
                         input_ids=sample_batch["input_ids"],
-                        attention_mask=sample_batch["attention_mask"]
+                        attention_mask=sample_batch["attention_mask"],
                     )
                     assert "logits" in output
         except Exception as e:

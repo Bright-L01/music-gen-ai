@@ -184,7 +184,9 @@ async def get_batch_status(batch_id: str):
     overall_status = (
         "completed"
         if completed == len(batch_tasks)
-        else "processing" if completed + failed < len(batch_tasks) else "failed"
+        else "processing"
+        if completed + failed < len(batch_tasks)
+        else "failed"
     )
 
     return {

@@ -2,7 +2,7 @@
 Model management endpoints for Music Gen AI API.
 """
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field

@@ -4,11 +4,9 @@ Implements Double Submit Cookie pattern for CSRF protection.
 """
 
 import secrets
-import logging
 from typing import Optional, Set
-from datetime import datetime, timezone
 
-from fastapi import Request, Response, HTTPException, status
+from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -20,27 +18,27 @@ logger = get_logger(__name__)
 class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     """
     CSRF Protection using Double Submit Cookie pattern.
-    
+
     This middleware:
     1. Generates CSRF tokens for sessions
     2. Validates CSRF tokens on state-changing requests
     3. Manages CSRF cookie lifecycle
     """
-    
+
     # Methods that require CSRF protection
     PROTECTED_METHODS: Set[str] = {"POST", "PUT", "PATCH", "DELETE"}
-    
+
     # Paths that are exempt from CSRF protection
     EXEMPT_PATHS: Set[str] = {
         "/api/auth/csrf-token",  # CSRF token endpoint itself
-        "/api/auth/login",       # Login needs to work without existing CSRF
-        "/api/auth/register",    # Registration needs to work without CSRF
-        "/api/auth/refresh",     # Token refresh endpoint
-        "/docs",                 # API documentation
-        "/openapi.json",         # OpenAPI schema
-        "/health",               # Health checks
+        "/api/auth/login",  # Login needs to work without existing CSRF
+        "/api/auth/register",  # Registration needs to work without CSRF
+        "/api/auth/refresh",  # Token refresh endpoint
+        "/docs",  # API documentation
+        "/openapi.json",  # OpenAPI schema
+        "/health",  # Health checks
     }
-    
+
     def __init__(
         self,
         app,
@@ -62,20 +60,20 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         self.cookie_httponly = cookie_httponly
         self.cookie_samesite = cookie_samesite
         self.token_length = token_length
-    
+
     async def dispatch(self, request: Request, call_next):
         """Process request with CSRF protection."""
         # Skip CSRF check for exempt paths
         if self._is_exempt_path(request.url.path):
             return await call_next(request)
-        
+
         # Skip CSRF check for safe methods
         if request.method not in self.PROTECTED_METHODS:
             response = await call_next(request)
             # Ensure CSRF cookie is set for future requests
             self._ensure_csrf_cookie(request, response)
             return response
-        
+
         # Validate CSRF token for protected methods
         if not await self._validate_csrf_token(request):
             logger.warning(
@@ -87,38 +85,38 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": "CSRF validation failed",
                     "code": "CSRF_TOKEN_INVALID",
-                    "message": "Invalid or missing CSRF token"
-                }
+                    "message": "Invalid or missing CSRF token",
+                },
             )
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Ensure CSRF cookie is set
         self._ensure_csrf_cookie(request, response)
-        
+
         return response
-    
+
     def _is_exempt_path(self, path: str) -> bool:
         """Check if path is exempt from CSRF protection."""
         # Exact match
         if path in self.EXEMPT_PATHS:
             return True
-        
+
         # Prefix match for certain paths
         exempt_prefixes = ["/static/", "/favicon", "/_next/"]
         return any(path.startswith(prefix) for prefix in exempt_prefixes)
-    
+
     async def _validate_csrf_token(self, request: Request) -> bool:
         """Validate CSRF token from cookie matches header/form."""
         # Get token from cookie
         cookie_token = request.cookies.get(self.cookie_name)
         if not cookie_token:
             return False
-        
+
         # Get token from header
         header_token = request.headers.get(self.header_name)
-        
+
         # If no header token, try to get from form data (for form submissions)
         if not header_token and request.method == "POST":
             try:
@@ -127,28 +125,28 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             except Exception:
                 # Not form data, that's ok
                 pass
-        
+
         if not header_token:
             return False
-        
+
         # Constant-time comparison
         return secrets.compare_digest(cookie_token, header_token)
-    
+
     def _ensure_csrf_cookie(self, request: Request, response: Response) -> None:
         """Ensure CSRF cookie is set on response."""
         # Check if cookie already exists
         existing_token = request.cookies.get(self.cookie_name)
-        
+
         # Only set new cookie if none exists
         if not existing_token:
             new_token = self._generate_csrf_token()
             self._set_csrf_cookie(response, new_token)
             logger.debug("Generated new CSRF token")
-    
+
     def _generate_csrf_token(self) -> str:
         """Generate a new CSRF token."""
         return secrets.token_urlsafe(self.token_length)
-    
+
     def _set_csrf_cookie(self, response: Response, token: str) -> None:
         """Set CSRF cookie on response."""
         response.set_cookie(
@@ -176,7 +174,7 @@ async def csrf_token_endpoint(request: Request) -> dict:
         token = secrets.token_urlsafe(32)
         # Token will be set by middleware
         request.state.new_csrf_token = token
-    
+
     return {"csrfToken": token}
 
 

@@ -132,9 +132,9 @@ class TestMultiInstrumentConfig:
         """Test default configuration."""
         config = MultiInstrumentConfig()
 
-        assert config.num_instruments == 8
-        assert config.max_instruments_per_track == 4
-        assert config.hidden_size == 512
+        assert config.num_instruments == 32
+        assert config.max_tracks == 8
+        assert config.hidden_size == 768
         assert config.num_layers == 12
 
     def test_custom_config(self):

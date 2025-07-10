@@ -3,21 +3,37 @@ EnCodec integration for audio tokenization and reconstruction.
 """
 
 import logging
+import os
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torchaudio
 
+# Check if we're in production mode
+PRODUCTION_MODE = os.getenv("MUSICGEN_PRODUCTION", "false").lower() == "true"
+
 try:
     from encodec import EncodecModel
     from encodec.utils import convert_audio
 
     ENCODEC_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     ENCODEC_AVAILABLE = False
     EncodecModel = None
     convert_audio = None
+
+    if PRODUCTION_MODE:
+        raise RuntimeError(
+            "🔴 PRODUCTION DEPLOYMENT BLOCKED: EnCodec not available!\n\n"
+            "The encodec package is required for production deployment but was not found.\n"
+            "This is a CRITICAL dependency for audio tokenization.\n\n"
+            "RESOLUTION:\n"
+            "1. Install encodec: pip install encodec\n"
+            "2. Or install all production dependencies: pip install -r requirements-prod.txt\n\n"
+            f"Import error details: {e}\n\n"
+            "⚠️  DO NOT deploy to production without this dependency!"
+        ) from e
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +58,22 @@ class EnCodecTokenizer(nn.Module):
 
         # Load EnCodec model
         if not ENCODEC_AVAILABLE:
-            logger.warning("EnCodec package not installed. Using mock tokenizer.")
-            self.encodec = None
-            self.num_quantizers = 8  # Default value
+            if PRODUCTION_MODE:
+                raise RuntimeError(
+                    f"🔴 CRITICAL: Cannot initialize EnCodecTokenizer in production mode!\n"
+                    f"EnCodec package is not available but required for production.\n"
+                    f"Model: {model_name}\n\n"
+                    f"Install encodec: pip install encodec"
+                )
+            else:
+                logger.warning(
+                    "EnCodec package not installed. Using mock tokenizer for development."
+                )
+                self.encodec = None
+                self.num_quantizers = 8  # Default value
         else:
             try:
+                logger.info(f"Loading EnCodec model: {model_name}")
                 self.encodec = EncodecModel.get_pretrained(model_name)
                 self.encodec.set_target_bandwidth(bandwidth)
 
@@ -57,12 +84,23 @@ class EnCodecTokenizer(nn.Module):
                 self.encodec.eval()
                 # Model properties
                 self.num_quantizers = self.encodec.quantizer.n_q
+                logger.info(
+                    f"✅ EnCodec model loaded successfully: {self.num_quantizers} quantizers"
+                )
 
             except Exception as e:
-                logger.error(f"Failed to load EnCodec model {model_name}: {e}")
-                logger.warning("Using mock tokenizer.")
-                self.encodec = None
-                self.num_quantizers = 8  # Default value
+                error_msg = f"Failed to load EnCodec model {model_name}: {e}"
+                logger.error(error_msg)
+
+                if PRODUCTION_MODE:
+                    raise RuntimeError(
+                        f"🔴 PRODUCTION ERROR: {error_msg}\n"
+                        f"Cannot continue in production mode with failed model loading."
+                    ) from e
+                else:
+                    logger.warning("Using mock tokenizer for development.")
+                    self.encodec = None
+                    self.num_quantizers = 8  # Default value
 
         # Model properties (set defaults if encodec is None)
         if self.encodec is not None:
@@ -148,17 +186,25 @@ class EnCodecTokenizer(nn.Module):
         audio = self.preprocess_audio(audio, sample_rate)
 
         if self.encodec is None:
-            # Mock encoding for testing
-            batch_size = audio.shape[0]
-            num_frames = int(audio.shape[-1] // self.hop_length)
-            codes = torch.randint(
-                0,
-                self.codebook_size,
-                (batch_size, self.num_quantizers, num_frames),
-                device=audio.device,
-            )
-            scales = None
-            return codes, scales
+            if PRODUCTION_MODE:
+                raise RuntimeError(
+                    "🔴 PRODUCTION ERROR: Cannot encode audio without EnCodec model!\n"
+                    "Mock encoding is not allowed in production mode.\n"
+                    "Ensure EnCodec is properly installed and initialized."
+                )
+            else:
+                # Mock encoding for development/testing only
+                logger.warning("Using mock encoding - not suitable for production!")
+                batch_size = audio.shape[0]
+                num_frames = int(audio.shape[-1] // self.hop_length)
+                codes = torch.randint(
+                    0,
+                    self.codebook_size,
+                    (batch_size, self.num_quantizers, num_frames),
+                    device=audio.device,
+                )
+                scales = None
+                return codes, scales
 
         # Encode with EnCodec
         with torch.no_grad():
@@ -195,11 +241,19 @@ class EnCodecTokenizer(nn.Module):
         """
 
         if self.encodec is None:
-            # Mock decoding for testing
-            batch_size, _, num_frames = codes.shape
-            audio_length = num_frames * self.hop_length
-            audio = torch.randn(batch_size, 1, audio_length, device=codes.device) * 0.1
-            return audio
+            if PRODUCTION_MODE:
+                raise RuntimeError(
+                    "🔴 PRODUCTION ERROR: Cannot decode audio without EnCodec model!\n"
+                    "Mock decoding is not allowed in production mode.\n"
+                    "Ensure EnCodec is properly installed and initialized."
+                )
+            else:
+                # Mock decoding for development/testing only
+                logger.warning("Using mock decoding - not suitable for production!")
+                batch_size, _, num_frames = codes.shape
+                audio_length = num_frames * self.hop_length
+                audio = torch.randn(batch_size, 1, audio_length, device=codes.device) * 0.1
+                return audio
 
         # Prepare encoded frames format expected by EnCodec
         encoded_frames = [(codes, scales)]

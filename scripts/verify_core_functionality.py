@@ -111,7 +111,6 @@ def test_basic_imports():
     logger.info("\nTesting core imports...")
 
     try:
-
         logger.info("✓ MusicGen model imports successfully")
 
         logger.info("✓ Transformer imports successfully")

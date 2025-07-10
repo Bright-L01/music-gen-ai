@@ -12,7 +12,6 @@ from music_gen.models.multi_instrument.conditioning import (
 )
 from music_gen.models.multi_instrument.config import MultiInstrumentConfig
 from music_gen.models.musicgen import MusicGenModel
-from music_gen.models.transformer.config import TransformerConfig
 
 
 class MultiInstrumentTransformer(nn.Module):
@@ -234,13 +233,15 @@ class MultiInstrumentMusicGen(MusicGenModel):
 
     def __init__(self, config: MultiInstrumentConfig):
         # Initialize base model with modified config
-        base_config = TransformerConfig(
-            **{
-                k: v
-                for k, v in config.__dict__.items()
-                if k in TransformerConfig.__dataclass_fields__
-            }
-        )
+        from ..transformer.config import MusicGenConfig
+
+        base_config = MusicGenConfig()
+
+        # Update transformer config from multi-instrument config
+        for k, v in config.__dict__.items():
+            if k in base_config.transformer.__dataclass_fields__:
+                setattr(base_config.transformer, k, v)
+
         super().__init__(base_config)
 
         self.multi_config = config
